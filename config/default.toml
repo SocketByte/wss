@@ -16,7 +16,7 @@ hidden = false
 [widgets.notification-center]
 route = "/notification-center"
 width = "500"
-height = "300"
+height = "400"
 layer = "top"
 anchor = ["top", "right"]
 monitors = [0]

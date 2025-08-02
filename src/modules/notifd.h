@@ -34,6 +34,7 @@ class Notifd {
     std::unique_ptr<sdbus::IObject> m_NotificationObject;
     std::unordered_map<uint32_t, Notification> m_Notifications;
     mutable std::mutex m_NotificationsMutex;
+    std::atomic<uint32_t> m_NotificationCounter{0};
     std::thread m_Thread;
 
     void StartExpirationTimer(uint32_t id, int32_t timeoutMs);
