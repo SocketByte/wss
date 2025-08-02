@@ -22,16 +22,16 @@ desires, such as React (or Preact), Vue, Angular or just plain HTML/JS.
 - [x] Webkit integration
 - [x] TOML configuration
 - [ ] WebSocket JSON IPC
-    - [ ] Resizing, moving, hiding, showing widgets
-    - [ ] Managing click regions
+    - [ ] Hiding, showing widgets
+    - [x] Managing click regions
     - [ ] Command execution
-    - [ ] Getting widget state
+    - [x] Passing widget/monitor state
     - [ ] Getting mouse state
-    - [ ] Event pub/sub system
+    - [x] Event pub/sub system
     - [ ] Custom integrations (look below)
 - [ ] Running widgets through the CLI (for keybinds)
 - [ ] Opening widgets based on mouse position (for docks, popups, etc.)
-- [ ] Basic universal TypeScript library for IPC
+- [x] Basic universal TypeScript library for IPC
 - [ ] Integrated modules (with optional React hooks)
     - [ ] Bluetooth
     - [ ] Wifi / Network
@@ -40,12 +40,11 @@ desires, such as React (or Preact), Vue, Angular or just plain HTML/JS.
     - [ ] Audio
     - [ ] Hyprland
     - [ ] Tray
-    - [ ] Notifications
+    - [x] Notifications
     - [ ] Apps
     - [ ] Custom commands
 - [ ] React Hooks
-    - [ ] useAutoClickRegion
-    - [ ] useAutoResize
+    - [x] useAutoClickRegion
     - [ ] useWidget / useWidgets
     - [ ] useAbsoluteMousePosition
 - [ ] Better (or any) documentation
