@@ -5,9 +5,12 @@ export interface ShellMessage {
   payload: ShellPayload;
 }
 
+type Listener<T = any> = (message: T) => void;
+
 export class ShellIPC {
   private static instance: ShellIPC;
   private socket: WebSocket | null = null;
+  private listeners: Map<string, Set<Listener>> = new Map();
 
   private constructor() {}
 
@@ -16,8 +19,10 @@ export class ShellIPC {
       const ws = new WebSocket(url);
 
       ws.onopen = () => {
-        this.getInstance().socket = ws;
-        resolve(this.getInstance());
+        const instance = this.getInstance();
+        instance.socket = ws;
+        ws.onmessage = (event) => instance.handleMessage(event);
+        resolve(instance);
       };
 
       ws.onerror = (error) => {
@@ -32,36 +37,57 @@ export class ShellIPC {
     });
   }
 
-  public send(type: string, payload: ShellPayload): void {
-    if (!this.socket) {
-      throw new Error("WebSocket is not connected.");
-    }
-    const message: ShellMessage = { type, payload };
-    this.socket.send(JSON.stringify(message));
+  public isReady(): boolean {
+    return this.socket?.readyState === WebSocket.OPEN;
   }
 
-  public listen<T>(type: string, callback: (message: T) => void): void {
-    if (!this.socket) {
+  public send(type: string, payload: ShellPayload): void {
+    if (!this.isReady()) {
       throw new Error("WebSocket is not connected.");
     }
-    this.socket.onmessage = (event) => {
-      try {
-        const message: ShellMessage = JSON.parse(event.data);
-        if (message.type === type) {
-          callback(message.payload as T);
+
+    const message: ShellMessage = { type, payload };
+    this.socket!.send(JSON.stringify(message));
+  }
+
+  public listen<T>(type: string, callback: Listener<T>): void {
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, new Set());
+    }
+    this.listeners.get(type)!.add(callback as Listener);
+  }
+
+  public unlisten<T>(type: string, callback?: Listener<T>): void {
+    if (!this.listeners.has(type)) return;
+
+    if (callback) {
+      this.listeners.get(type)!.delete(callback as Listener);
+    } else {
+      this.listeners.delete(type);
+    }
+  }
+
+  private handleMessage(event: MessageEvent): void {
+    try {
+      const message: ShellMessage = JSON.parse(event.data);
+      const callbacks = this.listeners.get(message.type);
+      if (callbacks) {
+        for (const cb of callbacks) {
+          cb(message.payload);
         }
-      } catch (error) {
-        console.error("Error parsing message:", error);
       }
-    };
+    } catch (error) {
+      console.error("Error parsing WebSocket message:", error);
+    }
   }
 
   public static disconnect(): void {
-    const instance = ShellIPC.getInstance();
+    const instance = this.getInstance();
     if (instance.socket) {
       instance.socket.close();
       instance.socket = null;
     }
+    instance.listeners.clear();
   }
 
   public static getInstance(): ShellIPC {
