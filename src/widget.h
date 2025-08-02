@@ -108,7 +108,7 @@ class Widget {
         }
     }
 
-    void Create(const Shell& shell);
+    void Create(Shell& shell);
 
     [[nodiscard]] const WidgetInfo& GetInfo() const { return m_Info; }
 

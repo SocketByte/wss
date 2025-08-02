@@ -1,3 +1,8 @@
+[settings]
+frontend_port = 3000
+ipc_port = 8080
+notification_timeout = 5000
+
 [widgets]
 [widgets.topbar]
 route = ""

@@ -9,7 +9,7 @@ static gboolean WebViewContextMenuCallback(WebKitWebView* web_view, WebKitContex
     return TRUE;
 }
 
-void WSS::Widget::Create(const Shell& shell) {
+void WSS::Widget::Create(Shell& shell) {
     const size_t monitors = m_Info.Monitors.size();
     for (int i = 0; i < monitors; i++) {
         std::string name = "wss.widget." + m_Info.Name + "." + std::to_string(m_Info.Monitors[i].MonitorId);
@@ -56,7 +56,7 @@ void WSS::Widget::Create(const Shell& shell) {
 
         WebKitWebView* webview = WEBKIT_WEB_VIEW(webkit_web_view_new());
 
-        std::string uri = "http://localhost:3000";
+        std::string uri = std::format("http://localhost:{}", shell.GetSettings().m_FrontendPort);
         if (!m_Info.Route.empty()) {
             uri += m_Info.Route;
         }

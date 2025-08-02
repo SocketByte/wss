@@ -37,6 +37,14 @@ static double GetScreenHeight(int monitorId) {
 }
 
 static std::atomic_bool IsRunning{true};
+
+class ShellSettings {
+public:
+    int m_FrontendPort;
+    int m_IpcPort;
+    int m_NotificationTimeout;
+};
+
 /**
  * Represents the main application shell for WSS.
  * This class is responsible for initializing and managing the entire GTK application.
@@ -45,10 +53,12 @@ class Shell {
     GtkApplication* m_Application = nullptr;
     IPC m_IPC{this};
     Notifd m_Notifd{this};
+    ShellSettings m_Settings;
 
     std::unordered_map<std::string, std::shared_ptr<Widget>> m_Widgets;
 
     static void GtkOnActivate(GtkApplication* app, gpointer data);
+    void LoadConfig(std::string configPath);
 
   public:
     Shell() = default;
@@ -72,6 +82,8 @@ class Shell {
     [[nodiscard]] bool IsValid() const { return m_Application != nullptr; }
 
     [[nodiscard]] GtkApplication* GetApplication() const { return m_Application; }
+
+    [[nodiscard]] ShellSettings& GetSettings() { return m_Settings; }
 };
 } // namespace WSS
 

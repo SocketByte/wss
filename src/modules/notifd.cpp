@@ -68,7 +68,7 @@ void WSS::Notifd::Start() {
                                                     .Body = body,
                                                     .Actions = actions,
                                                     .Hints = hints,
-                                                    .ExpireTimeout = expire_timeout};
+                                                    .ExpireTimeout = m_Shell->GetSettings().m_NotificationTimeout};
                     AddNotification(notification);
                 }
 

@@ -29,6 +29,7 @@ void WSS::Shell::Init(const std::string& appId, const GApplicationFlags flags, c
     auto* data = new GtkActivateData();
     data->shell = this;
     data->configPath = configPath;
+    LoadConfig(configPath);
 
     m_Application = GTK_APPLICATION(gtk_application_new(appId.c_str(), flags));
     g_signal_connect(m_Application, "activate", G_CALLBACK(GtkOnActivate), data);
@@ -46,6 +47,26 @@ void WSS::Shell::Init(const std::string& appId, const GApplicationFlags flags, c
     }
 
     delete data;
+}
+
+void WSS::Shell::LoadConfig(std::string configPath) {
+    toml::table config;
+    try {
+        config = toml::parse_file(configPath);
+    } catch (const toml::parse_error& err) {
+        WSS_ERROR("Failed to parse configuration file at {}: {}", configPath, err.description());
+    }
+
+    if (config.empty()) {
+        WSS_WARN("Configuration file at {} is empty or invalid.", configPath);
+        return;
+    }
+
+    toml::table* settingsConfig = config.get("settings")->as_table();
+    m_Settings.m_FrontendPort = settingsConfig->get("frontend_port") ? settingsConfig->get("frontend_port")->value_or<int>(3000) : 0;
+    m_Settings.m_IpcPort = settingsConfig->get("ipc_port") ? settingsConfig->get("ipc_port")->value_or<int>(8080) : 0;
+    m_Settings.m_NotificationTimeout = settingsConfig->get("notification_timeout") ? settingsConfig->get("notification_timeout")->value_or<int>(5000) : 0;
+    WSS_INFO("Loaded configuration.");
 }
 
 void WSS::Shell::GtkOnActivate(GtkApplication* app, gpointer data) {

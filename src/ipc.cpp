@@ -116,7 +116,7 @@ void WSS::IPC::Start() {
             lws_protocols protocols[] = {{"wss.ipc", callback_ws, 0, 4096}, {nullptr, nullptr, 0, 0}};
 
             lws_context_creation_info info{};
-            info.port = 8080;
+            info.port = m_Shell->GetSettings().m_IpcPort;
             info.protocols = protocols;
             info.gid = -1;
             info.uid = -1;
