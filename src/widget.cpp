@@ -1,34 +1,11 @@
 #include "widget.h"
 
 #include "shell.h"
+#include <libsoup/soup.h>
 
 static gboolean WebViewContextMenuCallback(WebKitWebView* web_view, WebKitContextMenu* context_menu, GdkEvent* event,
                                            WebKitHitTestResult* hit_test_result, gpointer user_data) {
     // Returning TRUE disables the context menu
-    return TRUE;
-}
-
-static gboolean GtkWidgetRealizeSetRegionsCallback(GtkWidget* widget, gpointer data) {
-    const auto* cbMonitorInfo = static_cast<WSS::WidgetMonitorInfo*>(data);
-    auto& map = cbMonitorInfo->ClickRegionMap;
-
-    cairo_region_t* region = cairo_region_create();
-
-    for (const auto& [regionName, regionInfo] : map) {
-        GdkRectangle clickable_area;
-        clickable_area.x = regionInfo.X;
-        clickable_area.y = regionInfo.Y;
-        clickable_area.width = regionInfo.Width;
-        clickable_area.height = regionInfo.Height;
-
-        cairo_region_union_rectangle(region, &clickable_area);
-    }
-
-    auto* surface = gtk_native_get_surface(GTK_NATIVE(widget));
-    gdk_surface_set_input_region(surface, region);
-
-    cairo_region_destroy(region);
-    WSS_DEBUG("Updated clickable regions for widget '{}' on monitor ID: {}", cbMonitorInfo->MonitorId, cbMonitorInfo->MonitorId);
     return TRUE;
 }
 
@@ -79,14 +56,17 @@ void WSS::Widget::Create(const Shell& shell) {
 
         WebKitWebView* webview = WEBKIT_WEB_VIEW(webkit_web_view_new());
 
-        const char* uri = "http://localhost:3000";
+        std::string uri = "http://localhost:3000";
         if (!m_Info.Route.empty()) {
-            char* fullUri = g_strdup_printf("%s/%s", uri, m_Info.Route);
-            webkit_web_view_load_uri(webview, fullUri);
-            g_free(fullUri);
-        } else {
-            webkit_web_view_load_uri(webview, uri);
+            uri += m_Info.Route;
         }
+
+        // Add metadata
+        uri += "?widgetName=" + m_Info.Name + "&monitorId=" + std::to_string(monitorInfo.MonitorId);
+
+        WSS_DEBUG("Loading URI: {}", uri);
+
+        webkit_web_view_load_uri(webview, uri.c_str());
 
         g_signal_connect(webview, "context-menu", G_CALLBACK(WebViewContextMenuCallback), NULL);
 
@@ -101,10 +81,25 @@ void WSS::Widget::Create(const Shell& shell) {
 
         webkit_web_context_set_cache_model(webkit_web_view_get_context(webview), WEBKIT_CACHE_MODEL_WEB_BROWSER);
 
-        g_signal_connect(gtkWindow, "realize", G_CALLBACK(GtkWidgetRealizeSetRegionsCallback), &monitorInfo);
-
         gtk_window_set_child(gtkWindow, GTK_WIDGET(webview));
         gtk_window_present(gtkWindow);
+
+        cairo_region_t* region = cairo_region_create();
+
+        for (const auto& [regionName, regionInfo] : monitorInfo.ClickRegionMap) {
+            GdkRectangle clickable_area;
+            clickable_area.x = regionInfo.X;
+            clickable_area.y = regionInfo.Y;
+            clickable_area.width = regionInfo.Width;
+            clickable_area.height = regionInfo.Height;
+
+            cairo_region_union_rectangle(region, &clickable_area);
+        }
+
+        auto* surface = gtk_native_get_surface(GTK_NATIVE(GTK_WIDGET(gtkWindow)));
+        gdk_surface_set_input_region(surface, region);
+
+        cairo_region_destroy(region);
 
         if (m_Info.DefaultHidden) {
             gtk_widget_set_visible(GTK_WIDGET(gtkWindow), FALSE);

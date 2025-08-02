@@ -8,6 +8,7 @@ pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4)
 pkg_check_modules(WEBKITGTK REQUIRED webkitgtk-6.0)
 pkg_check_modules(JSONC REQUIRED json-c)
 pkg_check_modules(LIBWS REQUIRED libwebsockets)
+pkg_check_modules(SOUP REQUIRED libsoup-3.0)
 
 add_subdirectory(lib/spdlog)
 add_subdirectory(lib/tomlplusplus)
@@ -35,23 +36,23 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         /usr/include/gtk4-layer-shell
         /usr/include/webkitgtk-6.0/
         /usr/include/webkitgtk-6.0/webkit
-        /usr/include/libsoup-3.0
         lib/cli11
         lib/spdlog/include
         lib/tomlplusplus/include
         ${GTK4_INCLUDE_DIRS}
-        ${WEBKIT2GTK_INCLUDE_DIRS}
+        ${WEBKITGTK_INCLUDE_DIRS}
         ${JSONC_INCLUDE_DIRS}
         ${LIBWS_INCLUDE_DIRS}
+        ${SOUP_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         gtk4-layer-shell
-        webkitgtk-6.0
         ${GTK4_LIBRARIES}
-        ${WEBKIT2GTK_LIBRARIES}
+        ${WEBKITGTK_LIBRARIES}
         ${JSONC_LIBRARIES}
         ${LIBWS_LIBRARIES}
+        ${SOUP_LIBRARIES}
         spdlog
         tomlplusplus::tomlplusplus
 )

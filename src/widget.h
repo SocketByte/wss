@@ -172,8 +172,22 @@ class Widget {
         monitorInfo.ClickRegionMap[regionName] = regionInfo;
 
         if (auto* window = GetWindow(monitorId); window) {
-            // TODO: Verify if this even works as intended.
-            gtk_widget_realize(GTK_WIDGET(window));
+            cairo_region_t* region = cairo_region_create();
+
+            for (const auto& [regionName, regionInfo] : monitorInfo.ClickRegionMap) {
+                GdkRectangle clickable_area;
+                clickable_area.x = regionInfo.X;
+                clickable_area.y = regionInfo.Y;
+                clickable_area.width = regionInfo.Width;
+                clickable_area.height = regionInfo.Height;
+
+                cairo_region_union_rectangle(region, &clickable_area);
+            }
+
+            auto* surface = gtk_native_get_surface(GTK_NATIVE(GTK_WIDGET(window)));
+            gdk_surface_set_input_region(surface, region);
+
+            cairo_region_destroy(region);
         } else {
             WSS_ERROR("Attempted to update clickable region for an invalid or non-existent window on monitor ID: {}", monitorId);
         }

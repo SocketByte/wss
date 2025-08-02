@@ -28,6 +28,15 @@ class Shell {
 
     void Init(const std::string& appId, GApplicationFlags flags, const std::string& configPath);
 
+    [[nodiscard]] IPC& GetIPC() { return m_IPC; }
+
+    [[nodiscard]] std::shared_ptr<Widget> GetWidget(const std::string& name) const {
+        if (const auto it = m_Widgets.find(name); it != m_Widgets.end()) {
+            return it->second;
+        }
+        return nullptr;
+    }
+
     [[nodiscard]] bool IsValid() const { return m_Application != nullptr; }
 
     [[nodiscard]] GtkApplication* GetApplication() const { return m_Application; }

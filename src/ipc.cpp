@@ -1,12 +1,20 @@
 #include "ipc.h"
 #include "shell.h"
 
+#define JSON_GET_STR(obj, key) json_object_get_string(json_object_object_get(obj, key))
+#define JSON_GET_INT(obj, key) json_object_get_int(json_object_object_get(obj, key))
+#define JSON_GET_BOOL(obj, key) json_object_get_boolean(json_object_object_get(obj, key))
+#define JSON_GET_OBJ(obj, key) json_object_object_get(obj, key)
+#define JSON_GET_ARRAY(obj, key) json_object_object_get(obj, key)
+
 static int callback_ws(lws* wsi, const lws_callback_reasons reason, void* user, void* in, const size_t len) {
     auto* shell = static_cast<WSS::Shell*>(lws_context_user(lws_get_context(wsi)));
     if (!shell) {
         WSS_ERROR("Shell instance is null in WebSocket callback.");
         return -1;
     }
+
+    auto& ipc = shell->GetIPC();
 
     switch (reason) {
     case LWS_CALLBACK_RECEIVE: {
@@ -23,13 +31,39 @@ static int callback_ws(lws* wsi, const lws_callback_reasons reason, void* user, 
             return -1;
         }
 
-        const char* type = json_object_get_string(type_obj);
-        WSS_DEBUG("Received IPC message of type: {}", type);
-        WSS_DEBUG("-- Payload: {}", json_object_to_json_string(payload_obj));
+        const auto type = std::string(json_object_get_string(type_obj));
+        if (type == "handshake") {
+            int monitorId = json_object_get_int(json_object_object_get(payload_obj, "monitorId"));
+            std::string widgetName = json_object_get_string(json_object_object_get(payload_obj, "widgetName"));
+            {
+                std::lock_guard lock(ipc.GetClientInfoMutex());
+                ipc.GetClientInfoMap().emplace(wsi, WSS::IPCClientInfo{monitorId, widgetName});
+            }
+            WSS_DEBUG("Client identified with monitor ID: {}, widget name: {}", monitorId, widgetName);
+            break;
+        }
+
+        const WSS::IPCClientInfo* clientInfo = ipc.GetClientInfo(wsi);
+        if (!clientInfo) {
+            WSS_WARN("No client info found for WebSocket connection.");
+        }
+
+        ipc.Notify(type, shell, clientInfo, payload_obj);
         break;
     }
-    default:
+    case LWS_CALLBACK_CLOSED: {
+
+        // Remove client info on close
+        {
+            std::lock_guard lock(ipc.GetClientInfoMutex());
+            auto& clientInfoMap = ipc.GetClientInfoMap();
+            auto it = clientInfoMap.find(wsi);
+            if (it != clientInfoMap.end()) {
+                clientInfoMap.erase(it);
+            }
+        }
         break;
+    }
     }
 
     return 0;
@@ -50,6 +84,26 @@ WSS::IPC::~IPC() {
 
 void WSS::IPC::Start() {
     WSS_ASSERT(m_Shell != nullptr, "Shell instance must not be null.");
+
+    Listen("update_click_region", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+        int monitorId = client->monitorId;
+        std::string widgetName = client->widgetName;
+
+        auto widget = shell->GetWidget(widgetName);
+        if (!widget) {
+            WSS_ERROR("Widget '{}' not found for monitor ID: {}", widgetName, monitorId);
+            return;
+        }
+        const auto regionName = JSON_GET_STR(payload, "name");
+        const int x = JSON_GET_INT(payload, "x");
+        const int y = JSON_GET_INT(payload, "y");
+        const int width = JSON_GET_INT(payload, "width");
+        const int height = JSON_GET_INT(payload, "height");
+
+        const WidgetClickRegionInfo regionInfo{x, y, width, height};
+        widget->SetClickableRegion(monitorId, regionName, regionInfo);
+    });
+
     m_Running = true;
     m_Thread = std::thread([this]() {
         try {
