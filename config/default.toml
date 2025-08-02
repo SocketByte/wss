@@ -21,18 +21,12 @@ hidden = false
 [widgets.notification-center]
 route = "/notification-center"
 width = "500"
-height = "300"
+height = "400"
 layer = "top"
-#anchor = ["bottom", "right"]
 anchor = ["top", "right"]
 monitors = [0]
 exclusivity = false
 click_regions = []
 margin_top = "20"
-margin_left = "20"
-
-#margin_top = "0"
-#margin_bottom = "20"
-#margin_left = "20"
-#margin_right = "20"
+margin_right = "20"
 hidden = false

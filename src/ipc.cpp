@@ -110,6 +110,12 @@ void WSS::IPC::Start() {
         shell->GetNotifd().SignalNotificationClosed(id, NotificationCloseReason::DISMISSED);
     });
 
+    Listen("notifd-notification-action", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+        uint32_t id = JSON_GET_INT(payload, "id");
+        std::string action = JSON_GET_STR(payload, "action");
+        shell->GetNotifd().SignalActionInvoked(id, action);
+    });
+
     m_Running = true;
     m_Thread = std::thread([this]() {
         try {

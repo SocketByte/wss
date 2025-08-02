@@ -55,7 +55,7 @@ void WSS::Notifd::Start() {
             auto notify = [&](const std::string& app_name, const uint32_t replaces_id, const std::string& app_icon,
                               const std::string& summary, const std::string& body, const std::vector<std::string>& actions,
                               const std::map<std::string, sdbus::Variant>& hints, const int32_t expire_timeout) -> uint32_t {
-                const uint32_t id = replaces_id == 0 ? static_cast<uint32_t>(m_Notifications.size() + 1) : replaces_id;
+                const uint32_t id = (replaces_id == 0) ? m_NotificationCounter.fetch_add(1, std::memory_order_relaxed) : replaces_id;
 
                 WSS_DEBUG("Received notification: ID={}, AppName={}, Summary={}, Body={}, Actions={}, Hints={}, ExpireTimeout={}", id,
                           app_name, summary, body, actions.size(), hints.size(), expire_timeout);
