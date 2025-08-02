@@ -4,6 +4,39 @@
 
 #include <pch.h>
 
+void lws_log_to_spdlog(int level, const char* line) {
+    std::string msg(line);
+
+    if (!msg.empty() && msg.back() == '\n') {
+        msg.pop_back();
+    }
+
+    if (!msg.empty() && msg[0] == '[') {
+        size_t pos = msg.find("] ");
+        if (pos != std::string::npos && pos + 2 < msg.size()) {
+            size_t prefix_end = pos + 4;
+            if (prefix_end <= msg.size()) {
+                msg = msg.substr(prefix_end);
+            }
+        }
+    }
+
+    switch (level) {
+    case LLL_ERR:
+        spdlog::error("[IPC-WS]{}", msg);
+        break;
+    case LLL_WARN:
+        spdlog::warn("[IPC-WS]{}", msg);
+        break;
+    case LLL_NOTICE:
+        spdlog::trace("[IPC-WS]{}", msg);
+        break;
+    default:
+        spdlog::trace("[IPC-WS]{}", msg);
+        break;
+    }
+}
+
 int LaunchApplication(const std::string& configPath) {
     WSS_INFO("Initializing Web Shell System (WSS)...");
     WSS_INFO("-- GTK version: {}.{}.{}", gtk_get_major_version(), gtk_get_minor_version(), gtk_get_micro_version());
@@ -84,7 +117,10 @@ int main(int argc, char* argv[]) {
 
     run->callback([&customConfigPath, &debugMode] {
         if (debugMode) {
-            spdlog::set_level(spdlog::level::debug);
+            spdlog::set_level(spdlog::level::trace);
+            lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE, lws_log_to_spdlog);
+        } else {
+            lws_set_log_level(LLL_ERR | LLL_WARN, nullptr);
         }
         exit(LaunchApplication(customConfigPath));
     });
