@@ -18,7 +18,8 @@ static int callback_ws(lws* wsi, const lws_callback_reasons reason, void* user, 
 
     switch (reason) {
     case LWS_CALLBACK_RECEIVE: {
-        json_object* jobj = json_tokener_parse(static_cast<const char*>(in));
+        std::string message(static_cast<const char*>(in), len);
+        json_object* jobj = json_tokener_parse(message.c_str());
         if (!jobj) {
             WSS_ERROR("Failed to parse JSON from received message.");
             return -1;
