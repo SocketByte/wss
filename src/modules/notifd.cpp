@@ -80,7 +80,7 @@ void WSS::Notifd::Start() {
             };
 
             auto getServerInformation = []() -> std::tuple<std::string, std::string, std::string, std::string> {
-                return {"wss-notifd", "WebShellSystem", "alpha", ""};
+                return {"wss-notifd", "WebShellSystem", "1.0", "1.3"};
             };
 
             m_NotificationObject
