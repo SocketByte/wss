@@ -6,12 +6,10 @@
 
 int LaunchApplication(const std::string& configPath) {
     WSS_INFO("Initializing Web Shell System (WSS)...");
-    WSS_INFO("-- GTK version: {}.{}.{}", gtk_get_major_version(), gtk_get_minor_version(),
-             gtk_get_micro_version());
-    WSS_INFO("-- GTK Layer Shell version: {}.{}.{}", gtk_layer_get_major_version(),
-             gtk_layer_get_minor_version(), gtk_layer_get_micro_version());
-    WSS_INFO("-- WebKitGTK version: {}.{}.{}", webkit_get_major_version(),
-             webkit_get_minor_version(), webkit_get_micro_version());
+    WSS_INFO("-- GTK version: {}.{}.{}", gtk_get_major_version(), gtk_get_minor_version(), gtk_get_micro_version());
+    WSS_INFO("-- GTK Layer Shell version: {}.{}.{}", gtk_layer_get_major_version(), gtk_layer_get_minor_version(),
+             gtk_layer_get_micro_version());
+    WSS_INFO("-- WebKitGTK version: {}.{}.{}", webkit_get_major_version(), webkit_get_minor_version(), webkit_get_micro_version());
 
     if (getenv("HYPRLAND_INSTANCE_SIGNATURE") == nullptr) {
         WSS_WARN("Not running on Hyprland. Some features may not work as expected.");
@@ -24,15 +22,13 @@ int LaunchApplication(const std::string& configPath) {
     }
 
     WSS_INFO("Running on Wayland with layer shell support.");
-    if (gtk_get_major_version() < 4 ||
-        (gtk_get_major_version() == 4 && gtk_get_minor_version() < 18)) {
+    if (gtk_get_major_version() < 4 || (gtk_get_major_version() == 4 && gtk_get_minor_version() < 18)) {
         WSS_CRITICAL("GTK version 4.18 or higher is required.");
         WSS_CRITICAL("Update your system or install the latest version of GTK.");
         return EXIT_FAILURE;
     }
 
-    if (webkit_get_major_version() < 2 ||
-        (webkit_get_major_version() == 2 && webkit_get_minor_version() < 48)) {
+    if (webkit_get_major_version() < 2 || (webkit_get_major_version() == 2 && webkit_get_minor_version() < 48)) {
         WSS_CRITICAL("WebkitGTK version 2.48 or higher is required.");
         WSS_CRITICAL("Update your system or install the latest version of WebkitGTK.");
         return EXIT_FAILURE;
@@ -50,7 +46,6 @@ int LaunchApplication(const std::string& configPath) {
 
     WSS::Shell shell;
     shell.Init("wss.shell", G_APPLICATION_DEFAULT_FLAGS, configPath);
-    shell.Shutdown();
 
     return EXIT_SUCCESS;
 }
@@ -84,9 +79,7 @@ int main(int argc, char* argv[]) {
     std::string customConfigPath;
     bool debugMode = false;
     const auto run = app.add_subcommand("start", "Run the Web Shell System");
-    run->add_option("-c,--config", customConfigPath, "Path to the configuration file")
-        ->default_val(configPath)
-        ->check(CLI::ExistingFile);
+    run->add_option("-c,--config", customConfigPath, "Path to the configuration file")->default_val(configPath)->check(CLI::ExistingFile);
     run->add_flag("-d,--debug", debugMode, "Enable debug mode for verbose logging");
 
     run->callback([&customConfigPath, &debugMode] {

@@ -25,6 +25,8 @@ add_executable(${PROJECT_NAME}
         src/widget.cpp
         src/widget.h
         src/dimparser.h
+        src/ipc.cpp
+        src/ipc.h
 )
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/pch.h)

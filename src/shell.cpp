@@ -1,6 +1,16 @@
 #include "shell.h"
 
 #include "dimparser.h"
+#include <csignal>
+
+static void HandleSignal(int signal) {
+    if (signal == SIGINT || signal == SIGTERM) {
+        WSS::IsRunning = false;
+        WSS_INFO("Shutdown signal received (signal: {}).", signal);
+        // If GTK is running, this safely quits the main loop
+        g_application_quit(g_application_get_default());
+    }
+}
 
 struct GtkActivateData {
     WSS::Shell* shell{};    // Pointer to the Shell instance
@@ -9,30 +19,30 @@ struct GtkActivateData {
 
 void WSS::Shell::Init(const std::string& appId, const GApplicationFlags flags, const std::string& configPath) {
     WSS_ASSERT(!appId.empty(), "Application ID must not be empty.");
+
+    // Register shutdown signal handlers
+    std::signal(SIGINT, HandleSignal);
+    std::signal(SIGTERM, HandleSignal);
+
     auto* data = new GtkActivateData();
     data->shell = this;
     data->configPath = configPath;
+
     m_Application = GTK_APPLICATION(gtk_application_new(appId.c_str(), flags));
     g_signal_connect(m_Application, "activate", G_CALLBACK(GtkOnActivate), data);
 
+    // Run IPC
+    m_IPC.Start();
+
     WSS_INFO("WSS is running. Press Ctrl+C to exit.");
     WSS_INFO("Application ID: {}", appId);
+
     const int status = g_application_run(G_APPLICATION(m_Application), 0, nullptr);
     if (status != 0) {
         WSS_ERROR("Failed to run the GTK application with status code: {}", status);
     }
 
     delete data;
-}
-
-void WSS::Shell::Shutdown() {
-    if (m_Application) {
-        g_application_quit(G_APPLICATION(m_Application));
-        g_object_unref(m_Application);
-        m_Application = nullptr;
-    } else {
-        WSS_WARN("Attempted to shutdown an invalid or already shutdown GTK application.");
-    }
 }
 
 void WSS::Shell::GtkOnActivate(GtkApplication* app, gpointer data) {

@@ -3,6 +3,8 @@
 
 #define WSS_EXPERIMENTAL
 
+#include "json-c/json.h"
+#include "libwebsockets.h"
 #include <CLI/CLI11.hpp>
 #include <toml++/toml.hpp>
 
@@ -24,10 +26,10 @@
 #define WSS_TRACE(message, ...) spdlog::trace(message, ##__VA_ARGS__)
 #define WSS_CRITICAL(message, ...) spdlog::critical(message, ##__VA_ARGS__)
 
-#define WSS_ASSERT(condition, message)                                                          \
-    if (!(condition)) {                                                                         \
-        WSS_CRITICAL("Assertion failed: {}, in file {}, line {}", message, __FILE__, __LINE__); \
-        std::abort();                                                                           \
+#define WSS_ASSERT(condition, message)                                                                                                     \
+    if (!(condition)) {                                                                                                                    \
+        WSS_CRITICAL("Assertion failed: {}, in file {}, line {}", message, __FILE__, __LINE__);                                            \
+        std::abort();                                                                                                                      \
     }
 
 #endif // PCH_H

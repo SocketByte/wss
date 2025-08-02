@@ -1,5 +1,3 @@
-import WebSocket from "ws";
-
 export type ShellPayload = any;
 
 export interface ShellMessage {
@@ -17,47 +15,45 @@ export class ShellIPC {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(url);
 
-      ws.on("open", () => {
-        ShellIPC.getInstance().socket = ws;
-        resolve(ShellIPC.getInstance());
-      });
+      ws.onopen = () => {
+        this.getInstance().socket = ws;
+        resolve(this.getInstance());
+      };
 
-      ws.on("error", (error) => {
-        reject(new Error(`WebSocket connection error: ${error.message}`));
-      });
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        reject(new Error("Failed to connect to WebSocket"));
+      };
 
-      ws.on("close", () => {
-        ShellIPC.getInstance().socket = null;
-      });
+      ws.onclose = () => {
+        console.log("WebSocket connection closed.");
+        this.getInstance().socket = null;
+      };
     });
   }
 
-  public sendMessage(type: string, payload: ShellPayload): void {
+  public send(type: string, payload: ShellPayload): void {
     if (!this.socket) {
       throw new Error("WebSocket is not connected.");
     }
     const message: ShellMessage = { type, payload };
-    this.socket.send(JSON.stringify(message), (error) => {
-      if (error) {
-        console.error("Error sending message:", error);
-      }
-    });
+    this.socket.send(JSON.stringify(message));
   }
 
-  public onMessage<T>(type: string, callback: (message: T) => void): void {
+  public listen<T>(type: string, callback: (message: T) => void): void {
     if (!this.socket) {
       throw new Error("WebSocket is not connected.");
     }
-    this.socket.on("message", (data: WebSocket.Data) => {
+    this.socket.onmessage = (event) => {
       try {
-        const message: ShellMessage = JSON.parse(data.toString());
+        const message: ShellMessage = JSON.parse(event.data);
         if (message.type === type) {
           callback(message.payload as T);
         }
       } catch (error) {
         console.error("Error parsing message:", error);
       }
-    });
+    };
   }
 
   public static disconnect(): void {

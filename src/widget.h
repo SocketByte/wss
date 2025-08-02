@@ -84,21 +84,28 @@ class Widget {
   public:
     explicit Widget(WidgetInfo info) : m_Info(std::move(info)) { WSS_DEBUG("Creating widget: {}", m_Info.Name); }
 
-    ~Widget() {
-        for (const auto& [monitorId, window] : m_Windows) {
-            if (window) {
-                gtk_window_destroy(window);
-                g_object_unref(window);
+    ~Widget() noexcept {
+        try {
+            for (auto& [monitorId, window] : m_Windows) {
+                if (GTK_IS_WINDOW(window)) {
+                    // Just hide or destroy (GTK will finalize it on quit)
+                    gtk_window_destroy(GTK_WINDOW(window));
+                }
+                // Do NOT unref or clear — GTK owns it
+                window = nullptr;
             }
-        }
-        for (const auto& [monitorId, view] : m_Views) {
-            if (view) {
-                g_object_unref(view);
+
+            for (auto& [monitorId, view] : m_Views) {
+                // Same: GTK owns it via gtk_window_set_child
+                view = nullptr;
             }
+
+            m_Windows.clear();
+            m_Views.clear();
+            WSS_DEBUG("Destroying widget: {}", m_Info.Name);
+        } catch (const std::exception& e) {
+            WSS_ERROR("Exception in Widget destructor: {}", e.what());
         }
-        m_Windows.clear();
-        m_Views.clear();
-        WSS_DEBUG("Destroying widget: {}", m_Info.Name);
     }
 
     void Create(const Shell& shell);
