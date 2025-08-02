@@ -1,37 +1,12 @@
+#ifndef DIMPARSER_H
+#define DIMPARSER_H
 #include <pch.h>
 #include <regex>
+#include <shell.h>
 #include <sstream>
 #include <stdexcept>
 
 namespace WSS {
-
-inline double GetScreenWidth(int monitorId) {
-    GdkDisplay* display = gdk_display_get_default();
-    GListModel* monitorList = gdk_display_get_monitors(display);
-    const auto monitor = GDK_MONITOR(g_list_model_get_item(monitorList, monitorId));
-    if (!monitor) {
-        WSS_ERROR("Monitor ID '{}' does not exist.", monitorId);
-        return -1;
-    }
-
-    GdkRectangle geometry;
-    gdk_monitor_get_geometry(monitor, &geometry);
-    return geometry.width;
-}
-
-inline double GetScreenHeight(int monitorId) {
-    GdkDisplay* display = gdk_display_get_default();
-    GListModel* monitorList = gdk_display_get_monitors(display);
-    const auto monitor = GDK_MONITOR(g_list_model_get_item(monitorList, monitorId));
-    if (!monitor) {
-        WSS_ERROR("Monitor ID '{}' does not exist.", monitorId);
-        return -1;
-    }
-
-    GdkRectangle geometry;
-    gdk_monitor_get_geometry(monitor, &geometry);
-    return geometry.height;
-}
 
 class DimensionParser {
   public:
@@ -43,7 +18,8 @@ class DimensionParser {
         while (std::regex_search(expression, match, percentPattern)) {
             std::string percentStr = match[1].str();
             const double percentValue = std::stod(percentStr);
-            const double screenDimension = (type == DimensionType::WIDTH) ? GetScreenWidth(monitorId) : GetScreenHeight(monitorId);
+            const double screenDimension =
+                (type == DimensionType::WIDTH) ? WSS::GetScreenWidth(monitorId) : WSS::GetScreenHeight(monitorId);
             const double pixelValue = (percentValue / 100.0) * screenDimension;
             expression.replace(match.position(), match.length(), std::to_string(static_cast<int>(pixelValue)));
         }
@@ -56,7 +32,8 @@ class DimensionParser {
             const double denominator = std::stod(denominatorStr);
 
             const double fractionValue = numerator / denominator;
-            const double screenDimension = (type == DimensionType::WIDTH) ? GetScreenWidth(monitorId) : GetScreenHeight(monitorId);
+            const double screenDimension =
+                (type == DimensionType::WIDTH) ? WSS::GetScreenWidth(monitorId) : WSS::GetScreenHeight(monitorId);
             const double pixelValue = fractionValue * screenDimension;
 
             expression.replace(match.position(), match.length(), std::to_string(static_cast<int>(pixelValue)));
@@ -107,3 +84,5 @@ class DimensionParser {
 };
 
 } // namespace WSS
+
+#endif // DIMPARSER_H

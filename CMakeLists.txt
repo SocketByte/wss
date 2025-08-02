@@ -3,6 +3,7 @@ project(wss)
 
 set(CMAKE_CXX_STANDARD 23)
 
+find_package(sdbus-c++ REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4)
 pkg_check_modules(WEBKITGTK REQUIRED webkitgtk-6.0)
@@ -25,9 +26,11 @@ add_executable(${PROJECT_NAME}
         src/shell.h
         src/widget.cpp
         src/widget.h
-        src/dimparser.h
         src/ipc.cpp
         src/ipc.h
+        src/modules/notifd.cpp
+        src/modules/notifd.h
+        src/util/dbus_vreader.h
 )
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/pch.h)
@@ -55,6 +58,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         ${SOUP_LIBRARIES}
         spdlog
         tomlplusplus::tomlplusplus
+        SDBusCpp::sdbus-c++
 )
 target_compile_options(${PROJECT_NAME} PRIVATE
         ${WEBKIT2GTK_CFLAGS_OTHER}

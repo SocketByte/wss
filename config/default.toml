@@ -2,7 +2,7 @@
 [widgets.topbar]
 route = ""
 width = "100% - 70"
-height = "800"
+height = "50%"
 layer = "top"
 anchor = ["top", "left", "right"]
 monitors = [0, 1]
@@ -11,4 +11,19 @@ exclusivity_zone = 50
 click_regions = [
     { name = "bar", x = "0", y = "0", width = "100%", height = "50" },
 ]
+hidden = false
+
+[widgets.notification-center]
+route = "/notification-center"
+width = "500"
+height = "300"
+layer = "top"
+anchor = ["bottom", "right"]
+monitors = [0]
+exclusivity = false
+click_regions = []
+margin_top = "0"
+margin_bottom = "20"
+margin_left = "20"
+margin_right = "20"
 hidden = false

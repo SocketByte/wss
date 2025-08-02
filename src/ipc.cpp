@@ -37,7 +37,7 @@ static int callback_ws(lws* wsi, const lws_callback_reasons reason, void* user, 
             std::string widgetName = json_object_get_string(json_object_object_get(payload_obj, "widgetName"));
             {
                 std::lock_guard lock(ipc.GetClientInfoMutex());
-                ipc.GetClientInfoMap().emplace(wsi, WSS::IPCClientInfo{monitorId, widgetName});
+                ipc.GetClientInfoMap().emplace(wsi, WSS::IPCClientInfo{wsi, monitorId, widgetName});
             }
             WSS_DEBUG("Client identified with monitor ID: {}, widget name: {}", monitorId, widgetName);
             break;
@@ -85,7 +85,7 @@ WSS::IPC::~IPC() {
 void WSS::IPC::Start() {
     WSS_ASSERT(m_Shell != nullptr, "Shell instance must not be null.");
 
-    Listen("update_click_region", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+    Listen("window-update-click-region", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
         int monitorId = client->monitorId;
         std::string widgetName = client->widgetName;
 
@@ -100,8 +100,13 @@ void WSS::IPC::Start() {
         const int width = JSON_GET_INT(payload, "width");
         const int height = JSON_GET_INT(payload, "height");
 
-        const WidgetClickRegionInfo regionInfo{x, y, width, height};
+        const WidgetClickRegionInfo regionInfo{.X = x, .Y = y, .Width = width, .Height = height};
         widget->SetClickableRegion(monitorId, regionName, regionInfo);
+    });
+
+    Listen("notifd-notification-dismiss", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+        uint32_t id = JSON_GET_INT(payload, "id");
+        shell->GetNotifd().SignalNotificationClosed(id, NotificationCloseReason::DISMISSED);
     });
 
     m_Running = true;
@@ -137,4 +142,56 @@ void WSS::IPC::Start() {
             WSS_ERROR("Unknown exception occurred in IPC thread.");
         }
     });
+}
+
+void WSS::IPC::Broadcast(const std::string& type, json_object* payload) {
+    std::lock_guard lock(GetClientInfoMutex());
+
+    // Compose the JSON message
+    json_object* message = json_object_new_object();
+    json_object_object_add(message, "type", json_object_new_string(type.c_str()));
+    json_object_object_add(message, "payload", json_object_get(payload));
+
+    const std::string messageStr = json_object_to_json_string(message);
+
+    for (const auto& [wsi, clientInfo] : GetClientInfoMap()) {
+        if (!wsi)
+            continue;
+
+        size_t len = LWS_PRE + messageStr.size();
+        std::vector<unsigned char> buf(len);
+        memcpy(&buf[LWS_PRE], messageStr.c_str(), messageStr.size());
+
+        int n = lws_write(wsi, &buf[LWS_PRE], messageStr.size(), LWS_WRITE_TEXT);
+        if (n < 0) {
+            WSS_WARN("Failed to broadcast message to a client.");
+        }
+    }
+
+    WSS_DEBUG("Broadcasted IPC message of type: {}: {}", type, messageStr);
+    json_object_put(message);
+}
+void WSS::IPC::Send(lws* wsi, const std::string& type, json_object* payload) {
+    WSS_ASSERT(wsi != nullptr, "WebSocket instance must not be null.");
+    WSS_ASSERT(!type.empty(), "Message type must not be empty.");
+    WSS_ASSERT(payload != nullptr, "Payload must not be null.");
+
+    // Compose the JSON message
+    json_object* message = json_object_new_object();
+    json_object_object_add(message, "type", json_object_new_string(type.c_str()));
+    json_object_object_add(message, "payload", json_object_get(payload));
+
+    const std::string messageStr = json_object_to_json_string(message);
+
+    size_t len = LWS_PRE + messageStr.size();
+    std::vector<unsigned char> buf(len);
+    memcpy(&buf[LWS_PRE], messageStr.c_str(), messageStr.size());
+
+    int n = lws_write(wsi, &buf[LWS_PRE], messageStr.size(), LWS_WRITE_TEXT);
+    if (n < 0) {
+        WSS_ERROR("Failed to send IPC message: {}", type);
+    }
+
+    WSS_DEBUG("Sent IPC message of type: {}: {}", type, messageStr);
+    json_object_put(message);
 }

@@ -109,6 +109,7 @@ following dependencies:
 - WebkitGTK (2.48 or later)
 - JSON-C
 - Libwebsockets
+- SD-Bus C++
 - Your preferred C compiler and CMake
 
 ### Arch / Hyprland
@@ -116,7 +117,7 @@ following dependencies:
 If you are on Arch Linux, you can install the dependencies with the following command:
 
 ```bash
-sudo pacman -S gtk4 gtk4-layer-shell webkitgtk-6.0 json-c libwebsockets
+sudo pacman -S gtk4 gtk4-layer-shell webkitgtk-6.0 json-c libwebsockets sdbus-cpp
 ```
 
 Compile WSS with:

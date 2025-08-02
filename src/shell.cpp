@@ -1,6 +1,8 @@
 #include "shell.h"
 
-#include "dimparser.h"
+#include "modules/notifd.h"
+#include "util/dimparser.h"
+
 #include <csignal>
 
 static void HandleSignal(int signal) {
@@ -31,8 +33,9 @@ void WSS::Shell::Init(const std::string& appId, const GApplicationFlags flags, c
     m_Application = GTK_APPLICATION(gtk_application_new(appId.c_str(), flags));
     g_signal_connect(m_Application, "activate", G_CALLBACK(GtkOnActivate), data);
 
-    // Run IPC
+    // Run the additional daemons
     m_IPC.Start();
+    m_Notifd.Start();
 
     WSS_INFO("WSS is running. Press Ctrl+C to exit.");
     WSS_INFO("Application ID: {}", appId);

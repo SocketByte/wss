@@ -8,6 +8,7 @@ class Shell;
 }
 namespace WSS {
 struct IPCClientInfo {
+    lws* wsi = nullptr;
     int monitorId;
     std::string widgetName;
 };
@@ -38,6 +39,8 @@ class IPC {
     IPC& operator=(IPC&&) = delete;
 
     void Start();
+    void Broadcast(const std::string& type, json_object* payload);
+    void Send(lws* wsi, const std::string& type, json_object* payload);
 
     void Listen(const std::string& type, ListenerCallback callback) {
         std::lock_guard lock(m_ListenersMutex);

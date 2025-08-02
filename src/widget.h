@@ -186,6 +186,7 @@ class Widget {
 
             auto* surface = gtk_native_get_surface(GTK_NATIVE(GTK_WIDGET(window)));
             gdk_surface_set_input_region(surface, region);
+            gtk_widget_queue_draw(GTK_WIDGET(window));
 
             cairo_region_destroy(region);
         } else {

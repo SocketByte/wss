@@ -6,6 +6,7 @@
 #include "json-c/json.h"
 #include "libwebsockets.h"
 #include <CLI/CLI11.hpp>
+#include <sdbus-c++/sdbus-c++.h>
 #include <toml++/toml.hpp>
 
 #include <glib.h>
