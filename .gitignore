@@ -164,8 +164,10 @@ CMakeUserPresets.json
 
 # End of https://www.toptal.com/developers/gitignore/api/c,cmake,jetbrains+all,clion+all
 
-wss-react/node_modules/**
-wss-react/node_modules
+wss-js/node_modules/**
+wss-js/node_modules
+wss-js/dist
+wss-js/dist/**
 
 web
 web/**
