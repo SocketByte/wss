@@ -37,10 +37,11 @@ jobs:
             archlinux:latest \
             bash -c "
               set -euxo pipefail
-              pacman -Sy --noconfirm
               pacman-key --init
               pacman-key --populate archlinux
+              pacman -Syu --noconfirm
               pacman -S --noconfirm base-devel cmake ninja git gtk4 gtk4-layer-shell webkitgtk-6.0 json-c libwebsockets sdbus-cpp qt6 qt6-webengine layer-shell-qt
+              ldd --version
               cmake -B build -G Ninja \
                 -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
                 -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} \
