@@ -1,0 +1,50 @@
+name: CMake on Arch Linux
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - c_compiler: gcc
+            cxx_compiler: g++
+          - c_compiler: clang
+            cxx_compiler: clang++
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache pacman packages
+        id: cache-pacman
+        uses: actions/cache@v3
+        with:
+          path: /var/cache/pacman/pkg
+          key: ${{ runner.os }}-pacman-${{ hashFiles('**/PKGBUILD') }}
+          restore-keys: |
+            ${{ runner.os }}-pacman-
+
+      - name: Run build inside Arch Linux container
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            archlinux:latest \
+            bash -c "
+              pacman -Sy --noconfirm && \
+              pacman -S --noconfirm base-devel cmake ninja git gtk4 gtk4-layer-shell webkitgtk-6.0 json-c libwebsockets sdbus-cpp qt6 qt-webengine layer-shell-qt || true && \
+              cmake -B build -G Ninja \
+                -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+                -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} \
+                -DCMAKE_BUILD_TYPE=Release \
+                -S . && \
+              cmake --build build && \
+              ctest --test-dir build
+            "
