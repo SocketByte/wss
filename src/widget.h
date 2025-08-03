@@ -220,12 +220,9 @@ class Widget {
 
                 const QRect rect(info.X - padding, info.Y - padding, info.Width + 2 * padding, info.Height + 2 * padding);
                 inputRegion += rect;
-                WSS_DEBUG("Setting clickable region '{}' for monitor ID {}: ({}, {}, {}, {})", name, monitorId, info.X - padding,
-                          info.Y - padding, info.Width + 2 * padding, info.Height + 2 * padding);
             }
 
             window->setMask(inputRegion);
-            window->setAttribute(Qt::WA_TransparentForMouseEvents, true);
             window->update();
 #endif
         } else {
