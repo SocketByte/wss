@@ -108,7 +108,7 @@ class Widget {
             for (auto& [monitorId, window] : m_Windows) {
 #ifndef WSS_USE_QT
                 if (window) {
-                    gtk_widget_destroy(GTK_WIDGET(window));
+                    gtk_window_destroy(window);
                 }
 #endif
 
