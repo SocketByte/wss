@@ -128,7 +128,7 @@ sudo pacman -S gtk4 gtk4-layer-shell webkitgtk-6.0 json-c libwebsockets sdbus-cp
 If building with the Qt backend, you will also need to install the following packages (on top of the ones above):
 
 ```bash
-sudo pacman -S qt6 qt-webengine layer-shell-qt
+sudo pacman -S qt6 qt6-webengine layer-shell-qt
 ```
 
 Compile WSS with:

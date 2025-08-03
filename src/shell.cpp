@@ -32,9 +32,7 @@ static void HandleSignal(int signal) {
         WSS_INFO("Shutdown signal received (signal: {}).", signal);
         // If GTK is running, this safely quits the main loop
 #ifndef WSS_USE_QT
-        if (WSS::Shell::GetInstance().GetApplication()) {
-            g_application_quit(G_APPLICATION(WSS::Shell::GetInstance().GetApplication()));
-        }
+        g_application_quit(g_application_get_default());
 #else
         if (QApplication::instance()) {
             QApplication::quit();
@@ -101,6 +99,8 @@ int WSS::Shell::Init(const std::string& appId, const std::string& configPath) {
 
     LayerShellQt::Shell::useLayerShell();
     QApplication app(argc, argv);
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [this]() { m_Widgets.clear(); });
 
     const auto activateData = std::make_shared<ActivateCallbackData>();
     activateData->shell = this;

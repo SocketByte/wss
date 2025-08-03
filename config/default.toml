@@ -37,15 +37,15 @@ margin_top = "20"
 margin_right = "20"
 hidden = false
 
-[widgets.debug]
-route = "_DEBUG"
-width = "600"
-height = "600"
-layer = "top"
-anchor = ["left", "top"]
-monitors = [0]
-exclusivity = false
-click_regions = [
-    { name = "area", x = "0", y = "0", width = "600", height = "600" }
-]
-hidden = false
+#[widgets.debug]
+#route = "_DEBUG"
+#width = "600"
+#height = "600"
+#layer = "top"
+#anchor = ["left", "top"]
+#monitors = [0]
+#exclusivity = false
+#click_regions = [
+#    { name = "area", x = "0", y = "0", width = "600", height = "600" }
+#]
+#hidden = false

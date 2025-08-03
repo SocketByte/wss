@@ -106,23 +106,15 @@ class Widget {
     ~Widget() noexcept {
         try {
             for (auto& [monitorId, window] : m_Windows) {
-#ifdef WSS_USE_QT
+#ifndef WSS_USE_QT
                 if (window) {
-                    delete window;
-                    window = nullptr;
-                }
-#else
-                if (GTK_IS_WINDOW(window)) {
-                    gtk_window_destroy(GTK_WINDOW(window));
+                    gtk_widget_destroy(GTK_WIDGET(window));
                 }
 #endif
-            }
 
-            for (auto& [monitorId, view] : m_Views) {
 #ifdef WSS_USE_QT
-                if (view) {
-                    delete view;
-                    view = nullptr;
+                if (window) {
+                    window->deleteLater();
                 }
 #endif
             }
