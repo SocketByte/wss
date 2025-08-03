@@ -12,16 +12,22 @@ layer = "top"
 anchor = ["top", "left", "right"]
 monitors = [0, 1]
 exclusivity = true
+# Keep in mind that exclusivity zone is REQUIRED for Qt if exclusivity is true.
 exclusivity_zone = 50
 click_regions = [
     { name = "bar", x = "0", y = "0", width = "100%", height = "50" },
 ]
 hidden = false
+# This makes the dynamically added click regions a bit larger than the actual widget size.
+# QT ignores all input outside the click region, so this is useful to ensure things
+# like hover widgets actually hide if you leave them.
+# This doesn't affect the manually defined click regions!
+__QT_auto_click_region_padding = 20
 
 [widgets.notification-center]
 route = "/notification-center"
 width = "500"
-height = "400"
+height = "600"
 layer = "top"
 anchor = ["top", "right"]
 monitors = [0]
@@ -29,4 +35,17 @@ exclusivity = false
 click_regions = []
 margin_top = "20"
 margin_right = "20"
+hidden = false
+
+[widgets.debug]
+route = "_DEBUG"
+width = "600"
+height = "600"
+layer = "top"
+anchor = ["left", "top"]
+monitors = [0]
+exclusivity = false
+click_regions = [
+    { name = "area", x = "0", y = "0", width = "600", height = "600" }
+]
 hidden = false

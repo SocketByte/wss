@@ -5,51 +5,7 @@
 
 #include <csignal>
 
-static void HandleSignal(int signal) {
-    if (signal == SIGINT || signal == SIGTERM) {
-        WSS::IsRunning = false;
-        WSS_INFO("Shutdown signal received (signal: {}).", signal);
-        // If GTK is running, this safely quits the main loop
-        g_application_quit(g_application_get_default());
-    }
-}
-
-struct GtkActivateData {
-    WSS::Shell* shell{};    // Pointer to the Shell instance
-    std::string configPath; // Path to the configuration file
-};
-
-void WSS::Shell::Init(const std::string& appId, const GApplicationFlags flags, const std::string& configPath) {
-    WSS_ASSERT(!appId.empty(), "Application ID must not be empty.");
-
-    // Register shutdown signal handlers
-    std::signal(SIGINT, HandleSignal);
-    std::signal(SIGTERM, HandleSignal);
-
-    auto* data = new GtkActivateData();
-    data->shell = this;
-    data->configPath = configPath;
-    LoadConfig(configPath);
-
-    m_Application = GTK_APPLICATION(gtk_application_new(appId.c_str(), flags));
-    g_signal_connect(m_Application, "activate", G_CALLBACK(GtkOnActivate), data);
-
-    // Run the additional daemons
-    m_IPC.Start();
-    m_Notifd.Start();
-
-    WSS_INFO("WSS is running. Press Ctrl+C to exit.");
-    WSS_INFO("Application ID: {}", appId);
-
-    const int status = g_application_run(G_APPLICATION(m_Application), 0, nullptr);
-    if (status != 0) {
-        WSS_ERROR("Failed to run the GTK application with status code: {}", status);
-    }
-
-    delete data;
-}
-
-void WSS::Shell::LoadConfig(std::string configPath) {
+void WSS::Shell::LoadConfig(const std::string& configPath) {
     toml::table config;
     try {
         config = toml::parse_file(configPath);
@@ -65,13 +21,98 @@ void WSS::Shell::LoadConfig(std::string configPath) {
     toml::table* settingsConfig = config.get("settings")->as_table();
     m_Settings.m_FrontendPort = settingsConfig->get("frontend_port") ? settingsConfig->get("frontend_port")->value_or<int>(3000) : 0;
     m_Settings.m_IpcPort = settingsConfig->get("ipc_port") ? settingsConfig->get("ipc_port")->value_or<int>(8080) : 0;
-    m_Settings.m_NotificationTimeout = settingsConfig->get("notification_timeout") ? settingsConfig->get("notification_timeout")->value_or<int>(5000) : 0;
+    m_Settings.m_NotificationTimeout =
+        settingsConfig->get("notification_timeout") ? settingsConfig->get("notification_timeout")->value_or<int>(5000) : 0;
     WSS_INFO("Loaded configuration.");
 }
 
-void WSS::Shell::GtkOnActivate(GtkApplication* app, gpointer data) {
+static void HandleSignal(int signal) {
+    if (signal == SIGINT || signal == SIGTERM) {
+        WSS::IsRunning = false;
+        WSS_INFO("Shutdown signal received (signal: {}).", signal);
+        // If GTK is running, this safely quits the main loop
+#ifndef WSS_USE_QT
+        if (WSS::Shell::GetInstance().GetApplication()) {
+            g_application_quit(G_APPLICATION(WSS::Shell::GetInstance().GetApplication()));
+        }
+#else
+        if (QApplication::instance()) {
+            QApplication::quit();
+        }
+#endif
+    }
+}
+
+#ifndef WSS_USE_QT
+int WSS::Shell::Init(const std::string& appId, const GApplicationFlags flags, const std::string& configPath) {
+    WSS_ASSERT(!appId.empty(), "Application ID must not be empty.");
+
+    // Register shutdown signal handlers
+    std::signal(SIGINT, HandleSignal);
+    std::signal(SIGTERM, HandleSignal);
+
+    const auto activateData = std::make_shared<ActivateCallbackData>();
+    activateData->shell = this;
+    activateData->configPath = configPath;
+    LoadConfig(configPath);
+
+    m_Application = GTK_APPLICATION(gtk_application_new(appId.c_str(), flags));
+    g_signal_connect(m_Application, "activate", G_CALLBACK(OnActivate), activateData.get());
+
+    // Run the additional daemons
+    m_IPC.Start();
+    m_Notifd.Start();
+
+    WSS_INFO("WSS is running. Press Ctrl+C to exit.");
+    WSS_INFO("Application ID: {}", appId);
+
+    const int status = g_application_run(G_APPLICATION(m_Application), 0, nullptr);
+    if (status != 0) {
+        WSS_ERROR("Failed to run the GTK application with status code: {}", status);
+    }
+
+    return status;
+}
+#endif
+
+#ifdef WSS_USE_QT
+int WSS::Shell::Init(const std::string& appId, const std::string& configPath) {
+    int argc = 1;
+    char* argv[] = {const_cast<char*>(appId.c_str()), nullptr};
+
+    std::signal(SIGINT, HandleSignal);
+    std::signal(SIGTERM, HandleSignal);
+
+    LoadConfig(configPath);
+    m_IPC.Start();
+    m_Notifd.Start();
+
+    // Yeah...
+    qputenv("QT_WEBENGINE_CHROMIUM_FLAGS",
+            "--use-gl=egl --enable-zero-copy --ozone-platform=wayland -ozone-platform-hint=auto --ignore-gpu-blocklist "
+            "--enable-gpu-rasterization --disable-frame-rate-limit "
+            "--disable-software-rasterizer --disable-software-vsync --use-vulkan "
+            "--enable-unsafe-webgpu --disable-sync-preferences --disable-gpu-vsync "
+            "--disable-features=UseSkiaRenderer,UseChromeOSDirectVideoDecoder"
+            "--enable-native-gpu-memory-buffers --enable-gpu-memory-buffer-video-frames"
+            "--enable-features=Vulkan,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization");
+    qputenv("QT_QPA_PLATFORM", "wayland");
+    qputenv("EGL_PLATFORM", "wayland");
+
+    LayerShellQt::Shell::useLayerShell();
+    QApplication app(argc, argv);
+
+    const auto activateData = std::make_shared<ActivateCallbackData>();
+    activateData->shell = this;
+    activateData->configPath = configPath;
+    OnActivate(&app, activateData.get());
+    return QApplication::exec();
+}
+#endif
+
+void WSS::Shell::OnActivate(RenderApplication* app, ActivateCallbackPtr data) {
     WSS_ASSERT(app != nullptr, "GTK Application must not be null.");
-    auto* activateData = static_cast<GtkActivateData*>(data);
+    auto* activateData = static_cast<ActivateCallbackData*>(data);
     auto& shell = *activateData->shell;
     const std::string& configPath = activateData->configPath;
 
@@ -117,6 +158,8 @@ void WSS::Shell::GtkOnActivate(GtkApplication* app, gpointer data) {
         std::string marginLeft = info->get("margin_left") ? info->get("margin_left")->value_or<std::string>("0") : "0";
         std::string marginRight = info->get("margin_right") ? info->get("margin_right")->value_or<std::string>("0") : "0";
 
+        int _QtPadding = info->get("__QT_auto_click_region_padding") ? info->get("__QT_auto_click_region_padding")->value_or<int>(0) : 0;
+
         std::vector<WidgetMonitorInfo> monitorIds;
         if (!monitors) {
             WSS_ERROR("Monitors configuration is required for widget '{}'.", name);
@@ -131,9 +174,6 @@ void WSS::Shell::GtkOnActivate(GtkApplication* app, gpointer data) {
                 }
 
                 std::unordered_map<std::string, WidgetClickRegionInfo> clickRegionMap;
-                // click_regions = [
-                //   { name = "bar", x = "0", y = "0", width = "50", height = "500" },
-                // ]
                 auto clickRegions = info->get("click_regions")->as_array();
                 if (!clickRegions) {
                     WSS_ERROR("Click regions configuration is required for widget '{}'.", name);
@@ -155,7 +195,7 @@ void WSS::Shell::GtkOnActivate(GtkApplication* app, gpointer data) {
                     int regionHeight = DimensionParser::Parse(DimensionParser::DimensionType::HEIGHT,
                                                               regionTable->get("height")->value_or<std::string>("0"), monitorId);
 
-                    clickRegionMap[regionName] = {x, y, regionWidth, regionHeight};
+                    clickRegionMap[regionName] = {.X = x, .Y = y, .Width = regionWidth, .Height = regionHeight};
                 }
 
                 monitorIds.push_back(
@@ -236,7 +276,8 @@ void WSS::Shell::GtkOnActivate(GtkApplication* app, gpointer data) {
                               .AnchorBitmask = anchorBitmask,
                               .ExclusivityZone = exclusivityZone,
                               .Exclusivity = exclusivity,
-                              .DefaultHidden = hidden};
+                              .DefaultHidden = hidden,
+                              ._QT_padding = _QtPadding};
 
         WSS_DEBUG("Creating widget with info: Name='{}', Route='{}', Layer='{}', "
                   "AnchorBitmask='{}', Exclusivity='{}', DefaultHidden='{}'",

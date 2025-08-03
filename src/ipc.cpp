@@ -101,7 +101,8 @@ void WSS::IPC::Start() {
         const int width = JSON_GET_INT(payload, "width");
         const int height = JSON_GET_INT(payload, "height");
 
-        const WidgetClickRegionInfo regionInfo{.X = x, .Y = y, .Width = width, .Height = height};
+        const WidgetClickRegionInfo regionInfo{
+            .X = x, .Y = y, .Width = width, .Height = height, ._QT_padding = widget->GetInfo()._QT_padding};
         widget->SetClickableRegion(monitorId, regionName, regionInfo);
     });
 

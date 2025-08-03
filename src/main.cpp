@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include <config.h>
 #include <pch.h>
 
 void lws_log_to_spdlog(int level, const char* line) {
@@ -39,15 +40,21 @@ void lws_log_to_spdlog(int level, const char* line) {
 
 int LaunchApplication(const std::string& configPath) {
     WSS_INFO("Initializing Web Shell System (WSS)...");
+#ifndef WSS_USE_QT
     WSS_INFO("-- GTK version: {}.{}.{}", gtk_get_major_version(), gtk_get_minor_version(), gtk_get_micro_version());
     WSS_INFO("-- GTK Layer Shell version: {}.{}.{}", gtk_layer_get_major_version(), gtk_layer_get_minor_version(),
              gtk_layer_get_micro_version());
     WSS_INFO("-- WebKitGTK version: {}.{}.{}", webkit_get_major_version(), webkit_get_minor_version(), webkit_get_micro_version());
+#else
+    WSS_INFO("-- Qt version: {}.{}.{}", QT_VERSION_MAJOR, QT_VERSION_MINOR, QT_VERSION_PATCH);
+    WSS_WARN("Running in Qt mode. Some features may not be available or behave differently.");
+#endif
 
     if (getenv("HYPRLAND_INSTANCE_SIGNATURE") == nullptr) {
         WSS_WARN("Not running on Hyprland. Some features may not work as expected.");
     }
 
+#ifndef WSS_USE_QT
     if (!gtk_layer_is_supported()) {
         WSS_CRITICAL("Layer shell protocol is not supported on this platform.");
         WSS_CRITICAL("Ensure you are running on Wayland with a compatible compositor.");
@@ -66,6 +73,7 @@ int LaunchApplication(const std::string& configPath) {
         WSS_CRITICAL("Update your system or install the latest version of WebkitGTK.");
         return EXIT_FAILURE;
     }
+#endif
 
     WSS_INFO("Using configuration file at {}", configPath);
     WSS_INFO("All dependencies are satisfied.");
@@ -78,9 +86,11 @@ int LaunchApplication(const std::string& configPath) {
 #endif
 
     WSS::Shell shell;
-    shell.Init("wss.shell", G_APPLICATION_DEFAULT_FLAGS, configPath);
-
-    return EXIT_SUCCESS;
+#ifndef WSS_USE_QT
+    return shell.Init("wss.shell", G_APPLICATION_DEFAULT_FLAGS, configPath);
+#else
+    return shell.Init("wss.shell", configPath);
+#endif
 }
 
 int main(int argc, char* argv[]) {

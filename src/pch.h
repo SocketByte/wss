@@ -1,7 +1,7 @@
 #ifndef PCH_H
 #define PCH_H
 
-#define WSS_EXPERIMENTAL
+#include <config.h>
 
 #include "json-c/json.h"
 #include "libwebsockets.h"
@@ -9,10 +9,17 @@
 #include <sdbus-c++/sdbus-c++.h>
 #include <toml++/toml.hpp>
 
+#ifndef WSS_USE_QT
 #include <glib.h>
 #include <gtk/gtk.h>
 #include <gtk4-layer-shell.h>
 #include <webkitgtk-6.0/webkit/webkit.h>
+#else
+#include <LayerShellQt/shell.h>
+#include <QApplication>
+#include <QVBoxLayout>
+#include <QtWebEngineWidgets/QWebEngineView>
+#endif // WSS_USE_QT
 
 #include <memory>
 #include <string>

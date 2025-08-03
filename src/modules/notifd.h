@@ -47,7 +47,9 @@ class Notifd {
     }
 
     ~Notifd() {
-        m_Connection->leaveEventLoop();
+        if (m_Connection) {
+            m_Connection->leaveEventLoop();
+        }
         if (m_Thread.joinable()) {
             m_Thread.join();
         }

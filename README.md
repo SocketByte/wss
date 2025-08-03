@@ -2,7 +2,8 @@
 
 WSS is an experimental shell building framework for Wayland allowing you to easily create shell widgets with
 well-established web
-technologies. It is built with GTK4 and WebkitGTK in C++ and integrates seamlessly with any web framework your heart
+technologies. It is built with GTK4 and WebkitGTK (or QT/QTWebEngine as an alternative) in C++ and integrates seamlessly
+with any web framework your heart
 desires, such as React (or Preact), Vue, Angular or just plain HTML/JS.
 
 > [!CAUTION]
@@ -111,12 +112,23 @@ following dependencies:
 - SD-Bus C++
 - Your preferred C compiler and CMake
 
+> [!TIP]
+> There is an experimental Qt backend available. It has it's quirks, but it seems to work a bit smoother than the
+> GTK/Webkit backend on some systems. If you want to try it out, you can build it with the `-DWSS_USE_QT=ON` flag when
+> running CMake. Keep in mind that GTK backend is still the default and recommended one.
+
 ### Arch / Hyprland
 
 If you are on Arch Linux, you can install the dependencies with the following command:
 
 ```bash
 sudo pacman -S gtk4 gtk4-layer-shell webkitgtk-6.0 json-c libwebsockets sdbus-cpp
+```
+
+If building with the Qt backend, you will also need to install the following packages (on top of the ones above):
+
+```bash
+sudo pacman -S qt6 qt-webengine layer-shell-qt
 ```
 
 Compile WSS with:

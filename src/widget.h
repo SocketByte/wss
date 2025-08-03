@@ -9,6 +9,14 @@ namespace WSS {
 class Shell;
 }
 namespace WSS {
+#ifndef WSS_USE_QT
+typedef GtkWindow Window;
+typedef WebKitWebView WebView;
+#else
+typedef QWidget Window;
+typedef QWebEngineView WebView;
+#endif // WSS_USE_QT
+
 /**
  * Defines the anchor points for a widget.
  */
@@ -23,12 +31,21 @@ enum class WidgetAnchor : uint8_t {
  * Defines the layer in which a widget will be displayed.
  * The layer determines the stacking order of the widget in relation to other widgets.
  */
+#ifndef WSS_USE_QT
 enum class WidgetLayer : uint8_t {
     TOP = GTK_LAYER_SHELL_LAYER_TOP,
     BOTTOM = GTK_LAYER_SHELL_LAYER_BOTTOM,
     OVERLAY = GTK_LAYER_SHELL_LAYER_OVERLAY,
     BACKGROUND = GTK_LAYER_SHELL_LAYER_BACKGROUND,
 };
+#else
+enum class WidgetLayer : uint8_t {
+    TOP = LayerShellQt::Window::LayerTop,
+    BOTTOM = LayerShellQt::Window::LayerBottom,
+    OVERLAY = LayerShellQt::Window::LayerOverlay,
+    BACKGROUND = LayerShellQt::Window::LayerBackground,
+};
+#endif
 
 /**
  * Represents the clickable region information for a widget.
@@ -39,6 +56,7 @@ typedef struct {
     int Y = 0;
     int Width = 0;
     int Height = 0;
+    int _QT_padding = 0; // Padding for Qt compatibility, not used in GTK
 } WidgetClickRegionInfo;
 
 /**
@@ -69,6 +87,7 @@ typedef struct {
     int ExclusivityZone;
     bool Exclusivity;
     bool DefaultHidden;
+    int _QT_padding = 0; // Padding for Qt compatibility, not used in GTK
 } WidgetInfo;
 
 /**
@@ -77,8 +96,8 @@ typedef struct {
  * views associated with it.
  */
 class Widget {
-    std::unordered_map<uint8_t, GtkWindow*> m_Windows;
-    std::unordered_map<uint8_t, WebKitWebView*> m_Views;
+    std::unordered_map<uint8_t, Window*> m_Windows;
+    std::unordered_map<uint8_t, WebView*> m_Views;
     WidgetInfo m_Info;
 
   public:
@@ -87,17 +106,25 @@ class Widget {
     ~Widget() noexcept {
         try {
             for (auto& [monitorId, window] : m_Windows) {
+#ifdef WSS_USE_QT
+                if (window) {
+                    delete window;
+                    window = nullptr;
+                }
+#else
                 if (GTK_IS_WINDOW(window)) {
-                    // Just hide or destroy (GTK will finalize it on quit)
                     gtk_window_destroy(GTK_WINDOW(window));
                 }
-                // Do NOT unref or clear — GTK owns it
-                window = nullptr;
+#endif
             }
 
             for (auto& [monitorId, view] : m_Views) {
-                // Same: GTK owns it via gtk_window_set_child
-                view = nullptr;
+#ifdef WSS_USE_QT
+                if (view) {
+                    delete view;
+                    view = nullptr;
+                }
+#endif
             }
 
             m_Windows.clear();
@@ -114,14 +141,14 @@ class Widget {
 
     [[nodiscard]] bool IsAnchoredTo(WidgetAnchor anchor) const { return (m_Info.AnchorBitmask & static_cast<uint8_t>(anchor)) != 0; }
 
-    [[nodiscard]] GtkWindow* GetWindow(const uint8_t monitorId) const {
+    [[nodiscard]] Window* GetWindow(const uint8_t monitorId) const {
         if (const auto it = m_Windows.find(monitorId); it != m_Windows.end()) {
             return it->second;
         }
         return nullptr;
     }
 
-    [[nodiscard]] WebKitWebView* GetWebView(const uint8_t monitorId) const {
+    [[nodiscard]] WebView* GetWebView(const uint8_t monitorId) const {
         if (const auto it = m_Views.find(monitorId); it != m_Views.end()) {
             return it->second;
         }
@@ -172,6 +199,7 @@ class Widget {
         monitorInfo.ClickRegionMap[regionName] = regionInfo;
 
         if (auto* window = GetWindow(monitorId); window) {
+#ifndef WSS_USE_QT
             cairo_region_t* region = cairo_region_create();
 
             for (const auto& [regionName, regionInfo] : monitorInfo.ClickRegionMap) {
@@ -189,6 +217,25 @@ class Widget {
             gtk_widget_queue_draw(GTK_WIDGET(window));
 
             cairo_region_destroy(region);
+#else
+            QRegion inputRegion(0, 0, 1, 1);
+            for (const auto& [name, info] : monitorInfo.ClickRegionMap) {
+                if (info.X == 0 && info.Y == 0 && info.Width == 0 && info.Height == 0) {
+                    continue;
+                }
+
+                const int padding = info._QT_padding > 0 ? info._QT_padding : 0;
+
+                const QRect rect(info.X - padding, info.Y - padding, info.Width + 2 * padding, info.Height + 2 * padding);
+                inputRegion += rect;
+                WSS_DEBUG("Setting clickable region '{}' for monitor ID {}: ({}, {}, {}, {})", name, monitorId, info.X - padding,
+                          info.Y - padding, info.Width + 2 * padding, info.Height + 2 * padding);
+            }
+
+            window->setMask(inputRegion);
+            window->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+            window->update();
+#endif
         } else {
             WSS_ERROR("Attempted to update clickable region for an invalid or non-existent window on monitor ID: {}", monitorId);
         }
@@ -200,7 +247,11 @@ class Widget {
      */
     void Reload(const uint8_t monitorId) const {
         if (auto* view = GetWebView(monitorId); view) {
+#ifndef WSS_USE_QT
             webkit_web_view_reload(view);
+#else
+            view->reload();
+#endif
             return;
         }
         WSS_WARN("Attempted to reload an invalid or non-existent web view on monitor ID: {}", monitorId);
@@ -211,7 +262,11 @@ class Widget {
      */
     void ReloadAll() const {
         for (const auto& [monitorId, view] : m_Views) {
+#ifndef WSS_USE_QT
             webkit_web_view_reload(view);
+#else
+            view->reload();
+#endif
         }
     }
 
@@ -224,7 +279,11 @@ class Widget {
      */
     void SetVisible(const uint8_t monitorId, const bool visible) const {
         if (auto* window = GetWindow(monitorId); window) {
+#ifndef WSS_USE_QT
             gtk_widget_set_visible(GTK_WIDGET(window), visible);
+#else
+            window->setVisible(visible);
+#endif
 
             // If the window is hidden then there's no need for exclusivity.
             // TODO: Determine if that's ever something a user would wish to omit.
@@ -246,7 +305,11 @@ class Widget {
      */
     void SetVisibleAll(const bool visible) const {
         for (const auto& [monitorId, window] : m_Windows) {
+#ifndef WSS_USE_QT
             gtk_widget_set_visible(GTK_WIDGET(window), visible);
+#else
+            window->setVisible(visible);
+#endif
 
             if (m_Info.Exclusivity) {
                 SetExclusivity(monitorId, visible);
@@ -266,6 +329,7 @@ class Widget {
      */
     void SetExclusivity(const uint8_t monitorId, const bool exclusive, int zone = 0) const {
         if (auto* window = GetWindow(monitorId); window) {
+#ifndef WSS_USE_QT
             if (exclusive) {
                 gtk_layer_auto_exclusive_zone_enable(window);
                 if (zone) {
@@ -274,6 +338,14 @@ class Widget {
             } else {
                 gtk_layer_set_exclusive_zone(window, 0);
             }
+#else
+            auto* layer = LayerShellQt::Window::get(window->windowHandle());
+            if (exclusive) {
+                layer->setExclusiveZone(zone);
+            } else {
+                layer->setExclusiveZone(0);
+            }
+#endif
             return;
         }
         WSS_WARN("Attempted to set exclusivity for an invalid or non-existent window on monitor ID: {}", monitorId);
