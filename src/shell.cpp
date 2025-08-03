@@ -84,6 +84,7 @@ int WSS::Shell::Init(const std::string& appId, const std::string& configPath) {
     LoadConfig(configPath);
     m_IPC.Start();
     m_Notifd.Start();
+    m_Appd.Start();
 
     // Yeah...
     qputenv("QT_WEBENGINE_CHROMIUM_FLAGS",

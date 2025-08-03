@@ -37,6 +37,18 @@ margin_top = "20"
 margin_right = "20"
 hidden = false
 
+[widgets.app-launcher]
+route = "/launcher"
+width = "100%"
+height = "700"
+layer = "overlay"
+anchor = ["bottom"]
+monitors = [0]
+exclusivity = false
+click_regions = []
+hidden = false
+__QT_auto_click_region_padding = 20
+
 #[widgets.debug]
 #route = "_DEBUG"
 #width = "600"

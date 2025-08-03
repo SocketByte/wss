@@ -2,6 +2,7 @@
 #define SHELL_H
 
 #include "ipc.h"
+#include "modules/appd.h"
 
 #include <modules/notifd.h>
 #include <pch.h>
@@ -49,6 +50,7 @@ static double GetScreenHeight(int monitorId) {
     gdk_monitor_get_geometry(monitor, &geometry);
     return geometry.height;
 }
+
 #else
 static double GetScreenWidth(int monitorId) {
     QList<QScreen*> screens = QGuiApplication::screens();
@@ -92,6 +94,7 @@ class Shell {
     RenderApplication* m_Application = nullptr;
     IPC m_IPC{this};
     Notifd m_Notifd{this};
+    Appd m_Appd{this};
     ShellSettings m_Settings;
 
     std::unordered_map<std::string, std::shared_ptr<Widget>> m_Widgets;
@@ -115,6 +118,7 @@ class Shell {
 
     [[nodiscard]] IPC& GetIPC() { return m_IPC; }
     [[nodiscard]] Notifd& GetNotifd() { return m_Notifd; }
+    [[nodiscard]] Appd& GetAppd() { return m_Appd; }
 
     [[nodiscard]] std::shared_ptr<Widget> GetWidget(const std::string& name) const {
         if (const auto it = m_Widgets.find(name); it != m_Widgets.end()) {

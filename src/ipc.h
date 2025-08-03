@@ -19,6 +19,9 @@ class IPC {
     std::thread m_Thread;
     std::atomic_bool m_Running{false};
 
+    std::thread m_MousePositionThread;
+    std::atomic_bool m_MousePositionRunning{false};
+
     std::mutex m_ClientInfoMutex;
     std::unordered_map<lws*, IPCClientInfo> m_ClientInfoMap;
 

@@ -21,14 +21,14 @@ desires, such as React (or Preact), Vue, Angular or just plain HTML/JS.
 - [x] GTK window management
 - [x] GTK layer shell integration
 - [x] Webkit integration
+- [x] Experimental Qt backend
 - [x] TOML configuration
 - [ ] WebSocket JSON IPC
     - [ ] Hiding, showing widgets
     - [x] Managing click regions
     - [ ] Command execution
     - [x] Passing widget/monitor state
-    - [ ] Getting mouse state
-    - [x] Event pub/sub system
+    - [x] Getting mouse state
     - [ ] Custom integrations (look below)
 - [ ] Running widgets through the CLI (for keybinds)
 - [ ] Opening widgets based on mouse position (for docks, popups, etc.)
@@ -42,12 +42,12 @@ desires, such as React (or Preact), Vue, Angular or just plain HTML/JS.
     - [ ] Hyprland
     - [ ] Tray
     - [x] Notifications
-    - [ ] Apps
+    - [x] Apps
     - [ ] Custom commands
 - [ ] React Hooks
     - [x] useAutoClickRegion
     - [ ] useWidget / useWidgets
-    - [ ] useAbsoluteMousePosition
+    - [x] useMousePosition
 - [ ] Better (or any) documentation
 - [ ] Example fully fledged shell to demonstrate capabilities
 - [ ] Support for other compositors (Sway, etc.)
