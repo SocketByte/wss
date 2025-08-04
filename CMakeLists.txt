@@ -11,7 +11,6 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4)
 pkg_check_modules(WEBKITGTK REQUIRED webkitgtk-6.0)
 pkg_check_modules(JSONC REQUIRED json-c)
-pkg_check_modules(LIBWS REQUIRED libwebsockets)
 pkg_check_modules(SOUP REQUIRED libsoup-3.0)
 
 add_subdirectory(lib/spdlog)
@@ -54,19 +53,20 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         lib/cli11
         lib/spdlog/include
         lib/tomlplusplus/include
+        lib/uWebSockets/src
+        lib/uWebSockets/uSockets/src
         ${GTK4_INCLUDE_DIRS}
         ${WEBKITGTK_INCLUDE_DIRS}
         ${JSONC_INCLUDE_DIRS}
-        ${LIBWS_INCLUDE_DIRS}
         ${SOUP_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+        /usr/lib/libz.so
         gtk4-layer-shell
         ${GTK4_LIBRARIES}
         ${WEBKITGTK_LIBRARIES}
         ${JSONC_LIBRARIES}
-        ${LIBWS_LIBRARIES}
         ${SOUP_LIBRARIES}
         ${WAYLAND_LIBRARIES}
         spdlog
@@ -75,6 +75,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Widgets
         Qt6::WebEngineWidgets
         LayerShellQt::Interface
+        ${CMAKE_SOURCE_DIR}/lib/uWebSockets/uSockets/uSockets.a
 )
 target_compile_options(${PROJECT_NAME} PRIVATE
         ${WEBKIT2GTK_CFLAGS_OTHER}

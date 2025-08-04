@@ -34,9 +34,7 @@ static void HandleSignal(int signal) {
 #ifndef WSS_USE_QT
         g_application_quit(g_application_get_default());
 #else
-        if (QApplication::instance()) {
-            QApplication::quit();
-        }
+
 #endif
     }
 }
@@ -78,8 +76,11 @@ int WSS::Shell::Init(const std::string& appId, const std::string& configPath) {
     int argc = 1;
     char* argv[] = {const_cast<char*>(appId.c_str()), nullptr};
 
-    std::signal(SIGINT, HandleSignal);
-    std::signal(SIGTERM, HandleSignal);
+    LayerShellQt::Shell::useLayerShell();
+    QApplication app(argc, argv);
+
+    // std::signal(SIGINT, HandleSignal);
+    // std::signal(SIGTERM, HandleSignal);
 
     LoadConfig(configPath);
     m_IPC.Start();
@@ -89,19 +90,29 @@ int WSS::Shell::Init(const std::string& appId, const std::string& configPath) {
     // Yeah...
     qputenv("QT_WEBENGINE_CHROMIUM_FLAGS",
             "--use-gl=egl --enable-zero-copy --ozone-platform=wayland -ozone-platform-hint=auto --ignore-gpu-blocklist "
-            "--enable-gpu-rasterization --disable-frame-rate-limit "
+            "--enable-gpu-rasterization --disable-frame-rate-limit --no-sandbox"
             "--disable-software-rasterizer --disable-software-vsync --use-vulkan "
             "--enable-unsafe-webgpu --disable-sync-preferences --disable-gpu-vsync "
             "--disable-features=UseSkiaRenderer,UseChromeOSDirectVideoDecoder"
             "--enable-native-gpu-memory-buffers --enable-gpu-memory-buffer-video-frames"
             "--enable-features=Vulkan,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization");
+    qputenv("QTWEBENGINE_DISABLE_SANDBOX", "1");
     qputenv("QT_QPA_PLATFORM", "wayland");
     qputenv("EGL_PLATFORM", "wayland");
 
-    LayerShellQt::Shell::useLayerShell();
-    QApplication app(argc, argv);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [this]() { m_Widgets.clear(); });
+    // QObject::connect(qApp, &QCoreApplication::aboutToQuit, []() {
+    //     WSS_INFO("Application is quitting. Cleaning up resources...");
+    //     WSS::IsRunning = false;
+    //     // If GTK is running, this safely quits the main loop
+    //     for (QWidget* w : QApplication::topLevelWidgets()) {
+    //         if (auto* webView = qobject_cast<QWebEngineView*>(w)) {
+    //             webView->page()->setUrl(QUrl("about:blank")); // Detach heavy content
+    //             webView->deleteLater();                       // Mark for deletion
+    //         }
+    //     }
+    //     QCoreApplication::processEvents(QEventLoop::AllEvents, 200);
+    //     QApplication::quit();
+    // });
 
     const auto activateData = std::make_shared<ActivateCallbackData>();
     activateData->shell = this;

@@ -1,4 +1,6 @@
 #include "appd.h"
+
+#include <filesystem>
 #include <regex>
 #include <shell.h>
 #include <sys/inotify.h>

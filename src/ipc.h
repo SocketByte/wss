@@ -1,34 +1,43 @@
 #ifndef IPC_H
 #define IPC_H
 
+#include <App.h>
+#include <WebSocket.h>
 #include <pch.h>
+#include <queue>
 
 namespace WSS {
 class Shell;
 }
 namespace WSS {
+struct PendingMessage {
+    std::string type;
+    std::string json;
+};
+
 struct IPCClientInfo {
-    lws* wsi = nullptr;
     int monitorId;
     std::string widgetName;
 };
 
+typedef uWS::WebSocket<false, true, IPCClientInfo> WSClient;
+
 class IPC {
+    uWS::App* m_App = nullptr;
     Shell* m_Shell = nullptr;
-    lws_context* m_Context = nullptr;
+
     std::thread m_Thread;
     std::atomic_bool m_Running{false};
 
     std::thread m_MousePositionThread;
     std::atomic_bool m_MousePositionRunning{false};
 
-    std::mutex m_ClientInfoMutex;
-    std::unordered_map<lws*, IPCClientInfo> m_ClientInfoMap;
-
-    using ListenerCallback = std::function<void(Shell* shell, const IPCClientInfo* client, const json_object* payload)>;
+    using ListenerCallback = std::function<void(Shell* shell, WSClient* client, const json_object* payload)>;
 
     std::mutex m_ListenersMutex;
     std::unordered_map<std::string, std::vector<ListenerCallback>> m_Listeners;
+
+    void IPCCallback(WSS::WSClient* ws, std::string_view message, uWS::OpCode opCode);
 
   public:
     explicit IPC(Shell* shell) : m_Shell(shell) {
@@ -43,14 +52,14 @@ class IPC {
 
     void Start();
     void Broadcast(const std::string& type, json_object* payload);
-    void Send(lws* wsi, const std::string& type, json_object* payload);
+    void Send(WSClient* wsi, const std::string& type, json_object* payload);
 
     void Listen(const std::string& type, ListenerCallback callback) {
         std::lock_guard lock(m_ListenersMutex);
         m_Listeners[type].push_back(std::move(callback));
     }
 
-    void Notify(const std::string& type, Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+    void Notify(const std::string& type, Shell* shell, WSClient* client, const json_object* payload) {
         std::lock_guard lock(m_ListenersMutex);
         WSS_ASSERT(shell != nullptr, "Shell instance must not be null.");
         WSS_ASSERT(client != nullptr, "IPCClientInfo must not be null.");
@@ -69,20 +78,7 @@ class IPC {
     }
 
     [[nodiscard]] bool IsRunning() const { return m_Running.load(); }
-    [[nodiscard]] lws_context* GetContext() const { return m_Context; }
     [[nodiscard]] Shell* GetShell() { return m_Shell; }
-    [[nodiscard]] std::unordered_map<lws*, IPCClientInfo>& GetClientInfoMap() { return m_ClientInfoMap; }
-
-    [[nodiscard]] const IPCClientInfo* GetClientInfo(lws* wsi) {
-        std::lock_guard lock(m_ClientInfoMutex);
-        auto it = m_ClientInfoMap.find(wsi);
-        if (it != m_ClientInfoMap.end()) {
-            return &it->second;
-        }
-        return nullptr;
-    }
-
-    [[nodiscard]] std::mutex& GetClientInfoMutex() { return m_ClientInfoMutex; }
 };
 } // namespace WSS
 

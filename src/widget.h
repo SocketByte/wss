@@ -312,8 +312,8 @@ class Widget {
     void SetKeyboardInteractivity(const uint8_t monitorId, const bool interactive) const {
         if (auto* window = GetWindow(monitorId); window) {
 #ifndef WSS_USE_QT
-            gtk_layer_set_keyboard_interactivity(window, interactive ? GTK_LAYER_SHELL_KEYBOARD_INTERACTIVITY_ON
-                                                                     : GTK_LAYER_SHELL_KEYBOARD_INTERACTIVITY_OFF);
+            gtk_layer_set_keyboard_mode(window, interactive ? GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND : GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
+
 #else
             auto* layer = LayerShellQt::Window::get(window->windowHandle());
             if (layer) {

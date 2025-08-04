@@ -108,7 +108,7 @@ following dependencies:
 - GTK4 Layer Shell (1.1.1 or later)
 - WebkitGTK (2.48 or later)
 - JSON-C
-- Libwebsockets
+- Zlib
 - SD-Bus C++
 - Your preferred C compiler and CMake
 
@@ -122,7 +122,7 @@ following dependencies:
 If you are on Arch Linux, you can install the dependencies with the following command:
 
 ```bash
-sudo pacman -S gtk4 gtk4-layer-shell webkitgtk-6.0 json-c libwebsockets sdbus-cpp
+sudo pacman -S gtk4 gtk4-layer-shell webkitgtk-6.0 json-c sdbus-cpp zlib
 ```
 
 If building with the Qt backend, you will also need to install the following packages (on top of the ones above):

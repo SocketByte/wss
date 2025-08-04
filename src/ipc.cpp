@@ -1,5 +1,7 @@
 #include "ipc.h"
 #include "shell.h"
+#include <WebSocket.h>
+#include <queue>
 
 #define JSON_GET_STR(obj, key) json_object_get_string(json_object_object_get(obj, key))
 #define JSON_GET_INT(obj, key) json_object_get_int(json_object_object_get(obj, key))
@@ -7,75 +9,50 @@
 #define JSON_GET_OBJ(obj, key) json_object_object_get(obj, key)
 #define JSON_GET_ARRAY(obj, key) json_object_object_get(obj, key)
 
-static int callback_ws(lws* wsi, const lws_callback_reasons reason, void* user, void* in, const size_t len) {
-    auto* shell = static_cast<WSS::Shell*>(lws_context_user(lws_get_context(wsi)));
-    if (!shell) {
-        WSS_ERROR("Shell instance is null in WebSocket callback.");
-        return -1;
+void WSS::IPC::IPCCallback(WSClient* ws, std::string_view message, uWS::OpCode opCode) {
+    std::string msgStr(message);
+    json_object* jobj = json_tokener_parse(msgStr.c_str());
+    if (!jobj) {
+        WSS_ERROR("Failed to parse JSON from received message.");
+        ws->close();
+        return;
     }
 
-    auto& ipc = shell->GetIPC();
-
-    switch (reason) {
-    case LWS_CALLBACK_RECEIVE: {
-        std::string message(static_cast<const char*>(in), len);
-        json_object* jobj = json_tokener_parse(message.c_str());
-        if (!jobj) {
-            WSS_ERROR("Failed to parse JSON from received message.");
-            return -1;
-        }
-
-        json_object *type_obj, *payload_obj;
-        if (!json_object_object_get_ex(jobj, "type", &type_obj) || !json_object_object_get_ex(jobj, "payload", &payload_obj)) {
-            WSS_ERROR("Received JSON does not contain 'type' or 'payload' fields.");
-            json_object_put(jobj);
-            return -1;
-        }
-
-        const auto type = std::string(json_object_get_string(type_obj));
-        if (type == "handshake") {
-            int monitorId = json_object_get_int(json_object_object_get(payload_obj, "monitorId"));
-            std::string widgetName = json_object_get_string(json_object_object_get(payload_obj, "widgetName"));
-            {
-                std::lock_guard lock(ipc.GetClientInfoMutex());
-                ipc.GetClientInfoMap().emplace(wsi, WSS::IPCClientInfo{wsi, monitorId, widgetName});
-            }
-            WSS_DEBUG("Client identified with monitor ID: {}, widget name: {}", monitorId, widgetName);
-            break;
-        }
-
-        const WSS::IPCClientInfo* clientInfo = ipc.GetClientInfo(wsi);
-        if (!clientInfo) {
-            WSS_WARN("No client info found for WebSocket connection.");
-        }
-
-        ipc.Notify(type, shell, clientInfo, payload_obj);
-        break;
-    }
-    case LWS_CALLBACK_CLOSED: {
-
-        // Remove client info on close
-        {
-            std::lock_guard lock(ipc.GetClientInfoMutex());
-            auto& clientInfoMap = ipc.GetClientInfoMap();
-            auto it = clientInfoMap.find(wsi);
-            if (it != clientInfoMap.end()) {
-                clientInfoMap.erase(it);
-            }
-        }
-        break;
-    }
+    json_object *type_obj, *payload_obj;
+    if (!json_object_object_get_ex(jobj, "type", &type_obj) || !json_object_object_get_ex(jobj, "payload", &payload_obj)) {
+        WSS_ERROR("Received JSON does not contain 'type' or 'payload' fields.");
+        json_object_put(jobj);
+        ws->close();
+        return;
     }
 
-    return 0;
+    std::string type = json_object_get_string(type_obj);
+    if (type == "handshake") {
+        int monitorId = json_object_get_int(json_object_object_get(payload_obj, "monitorId"));
+        std::string widgetName = json_object_get_string(json_object_object_get(payload_obj, "widgetName"));
+
+        ws->getUserData()->monitorId = monitorId;
+        ws->getUserData()->widgetName = widgetName;
+        WSS_DEBUG("Client identified with monitor ID: {}, widget name: {}", monitorId, widgetName);
+        json_object_put(jobj);
+        return;
+    }
+
+    if (!ws->getUserData()) {
+        WSS_WARN("No client info found for WebSocket connection.");
+        json_object_put(jobj);
+        return;
+    }
+
+    m_Shell->GetIPC().Notify(type, m_Shell, ws, payload_obj);
+
+    json_object_put(jobj);
 }
 
 WSS::IPC::~IPC() {
     if (m_Running) {
         m_Running = false;
-        if (m_Context) {
-            lws_cancel_service(m_Context); // This wakes up lws_service()
-        }
+        m_App->close();
         if (m_Thread.joinable()) {
             m_Thread.join();
         }
@@ -86,9 +63,9 @@ WSS::IPC::~IPC() {
 void WSS::IPC::Start() {
     WSS_ASSERT(m_Shell != nullptr, "Shell instance must not be null.");
 
-    Listen("window-update-click-region", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
-        int monitorId = client->monitorId;
-        std::string widgetName = client->widgetName;
+    Listen("window-update-click-region", [this](Shell* shell, WSClient* client, const json_object* payload) {
+        int monitorId = client->getUserData()->monitorId;
+        std::string widgetName = client->getUserData()->widgetName;
 
         auto widget = shell->GetWidget(widgetName);
         if (!widget) {
@@ -106,25 +83,25 @@ void WSS::IPC::Start() {
         widget->SetClickableRegion(monitorId, regionName, regionInfo);
     });
 
-    Listen("notifd-notification-dismiss", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+    Listen("notifd-notification-dismiss", [this](Shell* shell, WSClient* client, const json_object* payload) {
         uint32_t id = JSON_GET_INT(payload, "id");
         shell->GetNotifd().SignalNotificationClosed(id, NotificationCloseReason::DISMISSED);
     });
 
-    Listen("notifd-notification-action", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+    Listen("notifd-notification-action", [this](Shell* shell, WSClient* client, const json_object* payload) {
         uint32_t id = JSON_GET_INT(payload, "id");
         std::string action = JSON_GET_STR(payload, "action");
         shell->GetNotifd().SignalActionInvoked(id, action);
     });
 
-    Listen("appd-application-run", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+    Listen("appd-application-run", [this](Shell* shell, WSClient* client, const json_object* payload) {
         std::string prefix = JSON_GET_STR(payload, "prefix");
         std::string appId = JSON_GET_STR(payload, "appId");
         WSS_DEBUG("Running application with ID: {} using prefix: {}", appId, prefix);
         shell->GetAppd().RunApplication(prefix, appId);
     });
 
-    Listen("appd-application-list-request", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+    Listen("appd-application-list-request", [this](Shell* shell, WSClient* client, const json_object* payload) {
         json_object* response = json_object_new_array();
         for (const auto& [name, app] : shell->GetAppd().GetApplications()) {
             json_object* appObj = json_object_new_object();
@@ -136,31 +113,31 @@ void WSS::IPC::Start() {
             json_object_object_add(appObj, "iconBase64Small", json_object_new_string(app.IconBase64Small.c_str()));
             json_object_array_add(response, appObj);
         }
-        Send(client->wsi, "appd-application-list-response", response);
+        Send(client, "appd-application-list-response", response);
         json_object_put(response);
     });
 
-    Listen("monitor-info-request", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
-        auto monitor = shell->GetWidget(client->widgetName)->GetMonitorInfo(client->monitorId);
+    Listen("monitor-info-request", [this](Shell* shell, WSClient* client, const json_object* payload) {
+        auto monitor = shell->GetWidget(client->getUserData()->widgetName)->GetMonitorInfo(client->getUserData()->monitorId);
 
         json_object* response = json_object_new_object();
-        json_object_object_add(response, "id", json_object_new_int(client->monitorId));
-        json_object_object_add(response, "width", json_object_new_int(GetScreenWidth(client->monitorId)));
-        json_object_object_add(response, "height", json_object_new_int(GetScreenHeight(client->monitorId)));
-        Send(client->wsi, "monitor-info-response", response);
+        json_object_object_add(response, "id", json_object_new_int(client->getUserData()->monitorId));
+        json_object_object_add(response, "width", json_object_new_int(GetScreenWidth(client->getUserData()->monitorId)));
+        json_object_object_add(response, "height", json_object_new_int(GetScreenHeight(client->getUserData()->monitorId)));
+        Send(client, "monitor-info-response", response);
         json_object_put(response);
     });
 
-    Listen("widget-set-keyboard-interactivity", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
-        std::string widgetName = client->widgetName;
-        int monitorId = client->monitorId;
-        auto widget = shell->GetWidget(widgetName);
+    Listen("widget-set-keyboard-interactivity", [this](Shell* shell, WSClient* client, const json_object* payload) {
+        std::string widgetName = client->getUserData()->widgetName;
+        const int monitorId = client->getUserData()->monitorId;
+        const auto widget = shell->GetWidget(widgetName);
         if (!widget) {
             WSS_ERROR("Widget '{}' not found for setting keyboard interactivity.", widgetName);
             return;
         }
 
-        bool interactive = JSON_GET_BOOL(payload, "interactive");
+        const bool interactive = JSON_GET_BOOL(payload, "interactive");
         widget->SetKeyboardInteractivity(monitorId, interactive);
     });
 
@@ -206,7 +183,7 @@ void WSS::IPC::Start() {
                 json_object_object_add(payload, "y", json_object_new_int(mousePosY));
                 Broadcast("mouse-position-update", payload);
                 json_object_put(payload);
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
         } catch (const std::exception& e) {
             WSS_ERROR("Unhandled exception in mouse position thread: {}", e.what());
@@ -217,29 +194,31 @@ void WSS::IPC::Start() {
 
     m_Running = true;
     m_Thread = std::thread([this]() {
+        const int port = m_Shell->GetSettings().m_IpcPort;
         try {
-            lws_protocols protocols[] = {{"wss.ipc", callback_ws, 0, 4096}, {nullptr, nullptr, 0, 0}};
-
-            lws_context_creation_info info{};
-            info.port = m_Shell->GetSettings().m_IpcPort;
-            info.protocols = protocols;
-            info.gid = -1;
-            info.uid = -1;
-            info.user = m_Shell;
-
-            m_Context = lws_create_context(&info);
-            if (!m_Context) {
-                WSS_ERROR("Failed to create IPC context");
-                return;
-            }
-
-            while (m_Running) {
-                int ret = lws_service(m_Context, 0);
-                if (ret < 0) {
-                    WSS_ERROR("IPC service error: {}", ret);
-                    break;
-                }
-            }
+            m_App = new uWS::App();
+            m_App
+                ->ws<IPCClientInfo>("/*", {
+                                              .compression = uWS::DEDICATED_COMPRESSOR_256KB,
+                                              .maxPayloadLength = 16 * 1024 * 1024, // 16 MB
+                                              .idleTimeout = 60,
+                                              .open =
+                                                  [this](WSClient* ws) {
+                                                      ws->subscribe("mouse-position-update");
+                                                      WSS_DEBUG("New IPC client connected.");
+                                                  },
+                                              .message = [this](WSClient* ws, const std::string_view message,
+                                                                const uWS::OpCode opCode) { IPCCallback(ws, message, opCode); },
+                                          })
+                .listen(port,
+                        [=, this](const auto* token) {
+                            if (token) {
+                                WSS_INFO("IPC service started on port {}.", port);
+                            } else {
+                                WSS_ERROR("Failed to start IPC service on port {}. Is it already in use?", port);
+                            }
+                        })
+                .run();
 
             WSS_DEBUG("IPC service loop exited, cleaning up resources.");
         } catch (const std::exception& e) {
@@ -251,53 +230,26 @@ void WSS::IPC::Start() {
 }
 
 void WSS::IPC::Broadcast(const std::string& type, json_object* payload) {
-    std::lock_guard lock(GetClientInfoMutex());
-
-    // Compose the JSON message
     json_object* message = json_object_new_object();
     json_object_object_add(message, "type", json_object_new_string(type.c_str()));
     json_object_object_add(message, "payload", json_object_get(payload));
+    const std::string jsonStr = json_object_to_json_string(message);
 
-    const std::string messageStr = json_object_to_json_string(message);
-
-    for (const auto& [wsi, clientInfo] : GetClientInfoMap()) {
-        if (!wsi)
-            continue;
-
-        size_t len = LWS_PRE + messageStr.size();
-        std::vector<unsigned char> buf(len);
-        memcpy(&buf[LWS_PRE], messageStr.c_str(), messageStr.size());
-
-        int n = lws_write(wsi, &buf[LWS_PRE], messageStr.size(), LWS_WRITE_TEXT);
-        if (n < 0) {
-            WSS_WARN("Failed to broadcast message to a client.");
-        }
+    bool status = m_App->publish(type, jsonStr, uWS::TEXT, true);
+    if (!status) {
+        WSS_WARN("Failed to broadcast message of type '{}'", type);
     }
-
-    // WSS_DEBUG("Broadcasted IPC message of type: {}: {}", type, messageStr);
     json_object_put(message);
 }
-void WSS::IPC::Send(lws* wsi, const std::string& type, json_object* payload) {
-    WSS_ASSERT(wsi != nullptr, "WebSocket instance must not be null.");
-    WSS_ASSERT(!type.empty(), "Message type must not be empty.");
-    WSS_ASSERT(payload != nullptr, "Payload must not be null.");
 
-    // Compose the JSON message
+void WSS::IPC::Send(WSClient* wsi, const std::string& type, json_object* payload) {
+    if (!wsi || !payload)
+        return;
+
     json_object* message = json_object_new_object();
     json_object_object_add(message, "type", json_object_new_string(type.c_str()));
     json_object_object_add(message, "payload", json_object_get(payload));
-
-    const std::string messageStr = json_object_to_json_string(message);
-
-    size_t len = LWS_PRE + messageStr.size();
-    std::vector<unsigned char> buf(len);
-    memcpy(&buf[LWS_PRE], messageStr.c_str(), messageStr.size());
-
-    int n = lws_write(wsi, &buf[LWS_PRE], messageStr.size(), LWS_WRITE_TEXT);
-    if (n < 0) {
-        WSS_ERROR("Failed to send IPC message: {}", type);
-    }
-
-    // WSS_DEBUG("Sent IPC message of type: {}: {}", type, messageStr);
+    const std::string jsonStr = json_object_to_json_string(message);
+    wsi->send(jsonStr, uWS::TEXT, true);
     json_object_put(message);
 }

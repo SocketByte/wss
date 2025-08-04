@@ -2,9 +2,9 @@ name: CMake on Arch Linux
 
 on:
   push:
-    branches: [master]
+    branches: [ master ]
   pull_request:
-    branches: [master]
+    branches: [ master ]
 
 jobs:
   build:
@@ -40,7 +40,7 @@ jobs:
               pacman-key --init
               pacman-key --populate archlinux
               pacman -Syu --noconfirm
-              pacman -S --noconfirm base-devel cmake ninja git gtk4 gtk4-layer-shell webkitgtk-6.0 json-c libwebsockets sdbus-cpp qt6 qt6-webengine layer-shell-qt
+              pacman -S --noconfirm base-devel cmake ninja git gtk4 gtk4-layer-shell webkitgtk-6.0 json-c zlib sdbus-cpp qt6 qt6-webengine layer-shell-qt
               ldd --version
               cmake -B build -G Ninja \
                 -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
