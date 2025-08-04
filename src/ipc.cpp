@@ -120,18 +120,8 @@ void WSS::IPC::Start() {
     Listen("appd-application-run", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
         std::string prefix = JSON_GET_STR(payload, "prefix");
         std::string appId = JSON_GET_STR(payload, "appId");
+        WSS_DEBUG("Running application with ID: {} using prefix: {}", appId, prefix);
         shell->GetAppd().RunApplication(prefix, appId);
-    });
-
-    Listen("monitor-info-request", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
-        auto monitor = shell->GetWidget(client->widgetName)->GetMonitorInfo(client->monitorId);
-
-        json_object* response = json_object_new_object();
-        json_object_object_add(response, "id", json_object_new_int(client->monitorId));
-        json_object_object_add(response, "width", json_object_new_int(GetScreenWidth(client->monitorId)));
-        json_object_object_add(response, "height", json_object_new_int(GetScreenHeight(client->monitorId)));
-        Send(client->wsi, "monitor-info-response", response);
-        json_object_put(response);
     });
 
     Listen("appd-application-list-request", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
@@ -148,6 +138,30 @@ void WSS::IPC::Start() {
         }
         Send(client->wsi, "appd-application-list-response", response);
         json_object_put(response);
+    });
+
+    Listen("monitor-info-request", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+        auto monitor = shell->GetWidget(client->widgetName)->GetMonitorInfo(client->monitorId);
+
+        json_object* response = json_object_new_object();
+        json_object_object_add(response, "id", json_object_new_int(client->monitorId));
+        json_object_object_add(response, "width", json_object_new_int(GetScreenWidth(client->monitorId)));
+        json_object_object_add(response, "height", json_object_new_int(GetScreenHeight(client->monitorId)));
+        Send(client->wsi, "monitor-info-response", response);
+        json_object_put(response);
+    });
+
+    Listen("widget-set-keyboard-interactivity", [this](Shell* shell, const IPCClientInfo* client, const json_object* payload) {
+        std::string widgetName = client->widgetName;
+        int monitorId = client->monitorId;
+        auto widget = shell->GetWidget(widgetName);
+        if (!widget) {
+            WSS_ERROR("Widget '{}' not found for setting keyboard interactivity.", widgetName);
+            return;
+        }
+
+        bool interactive = JSON_GET_BOOL(payload, "interactive");
+        widget->SetKeyboardInteractivity(monitorId, interactive);
     });
 
     m_MousePositionRunning = true;

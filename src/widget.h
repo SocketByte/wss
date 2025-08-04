@@ -309,6 +309,24 @@ class Widget {
         }
     }
 
+    void SetKeyboardInteractivity(const uint8_t monitorId, const bool interactive) const {
+        if (auto* window = GetWindow(monitorId); window) {
+#ifndef WSS_USE_QT
+            gtk_layer_set_keyboard_interactivity(window, interactive ? GTK_LAYER_SHELL_KEYBOARD_INTERACTIVITY_ON
+                                                                     : GTK_LAYER_SHELL_KEYBOARD_INTERACTIVITY_OFF);
+#else
+            auto* layer = LayerShellQt::Window::get(window->windowHandle());
+            if (layer) {
+                layer->setKeyboardInteractivity(interactive ? LayerShellQt::Window::KeyboardInteractivityOnDemand
+                                                            : LayerShellQt::Window::KeyboardInteractivityNone);
+                window->update();
+            } else {
+                WSS_WARN("LayerShellQt::Window not found for monitor ID: {}", monitorId);
+            }
+#endif
+        }
+    }
+
     /**
      * Sets the exclusivity for the window on the specified monitor ID.
      * If the window is set to exclusive mode, it will prevent other windows from overlapping with

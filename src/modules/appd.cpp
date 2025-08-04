@@ -252,6 +252,52 @@ void WSS::Appd::AddApplication(const std::string& name, const Application& app) 
     SendAppIPC(app);
 }
 
+std::string ReplaceDesktopEntryPlaceholders(const std::string& exec, const std::map<std::string, std::string>& context) {
+    std::string result;
+    size_t i = 0;
+
+    while (i < exec.size()) {
+        if (exec[i] == '%' && i + 1 < exec.size()) {
+            char next = exec[i + 1];
+            std::string replacement;
+
+            switch (next) {
+            case 'f':
+                replacement = context.count("%f") ? context.at("%f") : "";
+                break;
+            case 'F':
+                replacement = context.count("%F") ? context.at("%F") : "";
+                break;
+            case 'u':
+                replacement = context.count("%u") ? context.at("%u") : "";
+                break;
+            case 'U':
+                replacement = context.count("%U") ? context.at("%U") : "";
+                break;
+            case 'i':
+                replacement = context.count("%i") ? context.at("%i") : "";
+                break;
+            case 'c':
+                replacement = context.count("%c") ? context.at("%c") : "";
+                break;
+            case 'k':
+                replacement = context.count("%k") ? context.at("%k") : "";
+                break;
+            default:
+                replacement = "%" + std::string(1, next);
+                break;
+            }
+
+            result += replacement;
+            i += 2;
+        } else {
+            result += exec[i++];
+        }
+    }
+
+    return result;
+}
+
 void WSS::Appd::RunApplication(const std::string& prefix, const std::string& appId) {
     std::lock_guard lock(m_ApplicationsMutex);
     auto it = m_Applications.find(appId);
@@ -261,18 +307,19 @@ void WSS::Appd::RunApplication(const std::string& prefix, const std::string& app
     }
 
     const Application& app = it->second;
-    std::string command = prefix + " " + app.Exec;
+    std::string command =
+        prefix + " " +
+        ReplaceDesktopEntryPlaceholders(app.Exec, {{"%f", ""}, {"%F", ""}, {"%u", ""}, {"%U", ""}, {"%i", ""}, {"%c", ""}, {"%k", ""}});
 
-    int status = system(command.c_str());
-    if (status != 0) {
-        WSS_ERROR("Failed to run the application with status code: {}", status);
+    // Run app through "hyprctl dispatch exec --"
+    std::string fullCommand = "hyprctl dispatch exec -- " + command;
+    WSS_DEBUG("Running application: {}", fullCommand);
+    int result = system(fullCommand.c_str());
+    if (result != 0) {
+        WSS_ERROR("Failed to run application '{}': exit code {}", app.Name, result);
+    } else {
+        WSS_DEBUG("Application '{}' started successfully.", app.Name);
     }
-
-    json_object* payload = json_object_new_object();
-    json_object_object_add(payload, "id", json_object_new_string(app.Id.c_str()));
-    json_object_object_add(payload, "name", json_object_new_string(app.Name.c_str()));
-    json_object_object_add(payload, "status", json_object_new_int(status));
-    m_Shell->GetIPC().Broadcast("appd-application-result", payload);
 }
 void WSS::Appd::SendAppIPC(const Application& app) {
     json_object* payload = json_object_new_object();
