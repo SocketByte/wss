@@ -1,5 +1,14 @@
 # Web Shell System (WSS)
 
+![WSS Logo](.github/images/logo.png)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
+![GitHub issues](https://img.shields.io/github/issues/SocketByte/wss)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/SocketByte/wss)
+![GitHub last commit](https://img.shields.io/github/last-commit/SocketByte/wss)
+![GitHub top language](https://img.shields.io/github/languages/top/SocketByte/wss)
+![GitHub contributors](https://img.shields.io/github/contributors/SocketByte/wss)
+
 WSS is an experimental shell building framework for Wayland allowing you to easily create shell widgets with
 well-established web
 technologies. It is built with Qt6 and QtWebEngine in C++ and integrates seamlessly
