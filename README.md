@@ -18,10 +18,9 @@ desires, such as React (or Preact), Vue, Angular or just plain HTML/JS.
 
 ## Roadmap
 
-- [x] GTK window management
-- [x] GTK layer shell integration
-- [x] Webkit integration
-- [x] Experimental Qt backend
+- [x] Qt window management
+- [x] Qt layer shell integration
+- [x] QtWebEngine integration
 - [x] TOML configuration
 - [ ] WebSocket JSON IPC
     - [ ] Hiding, showing widgets
@@ -52,14 +51,14 @@ desires, such as React (or Preact), Vue, Angular or just plain HTML/JS.
 - [ ] Example fully fledged shell to demonstrate capabilities
 - [ ] Support for other compositors (Sway, etc.)
 - [ ] Plugins system
-- [ ] Fix the damn 60hz webkit lock
+- [ ] Fix the damn 60hz web engine lock
 
 ## Features
 
 - **Web-based widgets**: Create shell widgets using web technologies like React/Preact, Vue, Angular, or plain HTML/JS.
 - **Wayland integration**: Seamlessly integrates with Wayland, allowing you to create widgets that work well with the
   Wayland protocol.
-- **Solid foundation**: Built on top of GTK4 and WebkitGTK 6.0, providing a solid foundation for the project.
+- **Solid foundation**: Built on top of Qt6 and QtWebEngine, providing a solid foundation for the project.
 - **Easily configurable**: Configure the structure of your widgets using a simple TOML configuration file.
 - **React integration**: Comes with a React-based component/hook library for integrating your shell with your system.
   Provides out of the box integration for bluetooth, wifi, hyprland, tray and more.
@@ -93,8 +92,8 @@ functional shell widgets.
 any other CSS framework you like. Use React, Vue, Angular or just plain HTML/JS. WSS is designed to be flexible at all
 costs.
 
-**You might ask - but isn't it slower than a "native" (GTK/QT) shell?** It's a good question, and the answer is, yes, it
-is. But the performance difference is negligible unless you're running an older system, and the ease of use and
+**You might ask - but isn't it slower than a "native" (GTK/QT) shell?** Absolutely. But the performance difference is
+negligible unless you're running an older system (or do A LOT of heavy-weight animations), and the ease of use and
 flexibility of WSS outweighs the performance hit for me. Plus, with the power of modern web technologies, you can create
 highly performant widgets that are indistinguishable from native ones. No one forces you to install 500 heavy-weight npm
 packages after all. ;)
@@ -150,7 +149,7 @@ For other useful CLI options, run `wss --help`.
 ## Hyprland / Other Compositors
 
 WSS is **predominantly designed to work with Hyprland**, but it should work with any Wayland compositor that supports
-GTK4 Layer Shell protocol.
+Layer Shell V1 protocol.
 
 > [!NOTE]
 > I strongly recommend using Hyprland if you can. WSS is tested and developed
@@ -170,12 +169,8 @@ layerrule = ignorealpha 0, wss.shell  # Ignore blur when alpha is 0 (transparent
 
 ## Known Quirks
 
-- WebkitGTK web view is locked to 60hz (only on nvidia drivers?), which is very unfortunate. I'm _actively_ working on
-  finding a workaround for this. I might opt for CEF in the future if I can't find a solution but it would be a pretty
-  big undertaking.
-- Since it's based on Webkit, CSS support is not as good as in Gecko or Chromium. Some CSS features may not work as
-  expected, and you may need to use workarounds or polyfills for certain features. I recommend using something like
-  TailwindCSS to alleviate this problem a bit.
+- QtWebEngine web view is locked to 60hz (only on nvidia drivers?), which is very unfortunate. I'm _actively_ working on
+  finding a workaround for this.
 - Realtime thumbnail preview for widgets like docks might be pretty hard to pull off as of right now. (The performance
   hit of sending video data through websockets might be too high). This is something that can be improved in the future.
   Native widget system is better for some things and that's just life.
