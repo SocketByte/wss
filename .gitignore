@@ -162,6 +162,10 @@ CMakeUserPresets.json
 # External projects
 *-prefix/
 
+build
+.vscode
+.idea
+
 # End of https://www.toptal.com/developers/gitignore/api/c,cmake,jetbrains+all,clion+all
 
 wss-js/node_modules/**

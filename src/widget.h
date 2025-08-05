@@ -100,7 +100,7 @@ class Widget {
     std::unordered_map<uint8_t, WebView*> m_Views;
     WidgetInfo m_Info;
 
-  public:
+   public:
     explicit Widget(WidgetInfo info) : m_Info(std::move(info)) { WSS_DEBUG("Creating widget: {}", m_Info.Name); }
 
     ~Widget() noexcept {
@@ -131,7 +131,9 @@ class Widget {
 
     [[nodiscard]] const WidgetInfo& GetInfo() const { return m_Info; }
 
-    [[nodiscard]] bool IsAnchoredTo(WidgetAnchor anchor) const { return (m_Info.AnchorBitmask & static_cast<uint8_t>(anchor)) != 0; }
+    [[nodiscard]] bool IsAnchoredTo(WidgetAnchor anchor) const {
+        return (m_Info.AnchorBitmask & static_cast<uint8_t>(anchor)) != 0;
+    }
 
     [[nodiscard]] Window* GetWindow(const uint8_t monitorId) const {
         if (const auto it = m_Windows.find(monitorId); it != m_Windows.end()) {
@@ -155,8 +157,8 @@ class Widget {
      * @return The monitor information for the specified monitor ID.
      */
     [[nodiscard]] const WidgetMonitorInfo& GetMonitorInfo(const uint8_t monitorId) const {
-        if (const auto it =
-                std::ranges::find_if(m_Info.Monitors, [monitorId](const WidgetMonitorInfo& info) { return info.MonitorId == monitorId; });
+        if (const auto it = std::ranges::find_if(
+                m_Info.Monitors, [monitorId](const WidgetMonitorInfo& info) { return info.MonitorId == monitorId; });
             it != m_Info.Monitors.end()) {
             return *it;
         }
@@ -186,7 +188,8 @@ class Widget {
      * @param regionName The name of the clickable region to update.
      * @param regionInfo The new clickable region information.
      */
-    void SetClickableRegion(const uint8_t monitorId, const std::string& regionName, const WidgetClickRegionInfo& regionInfo) const {
+    void SetClickableRegion(const uint8_t monitorId, const std::string& regionName,
+                            const WidgetClickRegionInfo& regionInfo) const {
         auto& monitorInfo = const_cast<WidgetMonitorInfo&>(GetMonitorInfo(monitorId));
         monitorInfo.ClickRegionMap[regionName] = regionInfo;
 
@@ -217,7 +220,6 @@ class Widget {
                 }
 
                 const int padding = info._QT_padding > 0 ? info._QT_padding : 0;
-
                 const QRect rect(info.X - padding, info.Y - padding, info.Width + 2 * padding, info.Height + 2 * padding);
                 inputRegion += rect;
             }
@@ -312,7 +314,8 @@ class Widget {
     void SetKeyboardInteractivity(const uint8_t monitorId, const bool interactive) const {
         if (auto* window = GetWindow(monitorId); window) {
 #ifndef WSS_USE_QT
-            gtk_layer_set_keyboard_mode(window, interactive ? GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND : GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
+            gtk_layer_set_keyboard_mode(
+                window, interactive ? GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND : GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
 
 #else
             auto* layer = LayerShellQt::Window::get(window->windowHandle());

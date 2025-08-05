@@ -1,8 +1,13 @@
-BasedOnStyle: LLVM
-Language: Cpp
-Standard: c++20
-
-ColumnLimit: 140
+BasedOnStyle: Google
 IndentWidth: 4
+TabWidth: 4
 UseTab: Never
+ContinuationIndentWidth: 4
+AlignAfterOpenBracket: Align
+AllowShortFunctionsOnASingleLine: InlineOnly
+ColumnLimit: 130
+BreakBeforeBraces: Attach
+DerivePointerAlignment: false
 PointerAlignment: Left
+SpacesBeforeTrailingComments: 1
+SpaceAfterCStyleCast: true

@@ -1,10 +1,10 @@
-#include "shell.h"
-
-#include <iostream>
-
-#include <CLI/CLI11.hpp>
 #include <config.h>
 #include <pch.h>
+
+#include <CLI/CLI11.hpp>
+#include <iostream>
+
+#include "shell.h"
 
 int LaunchApplication(const std::string& configPath) {
     WSS_INFO("Initializing Web Shell System (WSS)...");
@@ -12,7 +12,8 @@ int LaunchApplication(const std::string& configPath) {
     WSS_INFO("-- GTK version: {}.{}.{}", gtk_get_major_version(), gtk_get_minor_version(), gtk_get_micro_version());
     WSS_INFO("-- GTK Layer Shell version: {}.{}.{}", gtk_layer_get_major_version(), gtk_layer_get_minor_version(),
              gtk_layer_get_micro_version());
-    WSS_INFO("-- WebKitGTK version: {}.{}.{}", webkit_get_major_version(), webkit_get_minor_version(), webkit_get_micro_version());
+    WSS_INFO("-- WebKitGTK version: {}.{}.{}", webkit_get_major_version(), webkit_get_minor_version(),
+             webkit_get_micro_version());
 #else
     WSS_INFO("-- Qt version: {}.{}.{}", QT_VERSION_MAJOR, QT_VERSION_MINOR, QT_VERSION_PATCH);
     WSS_WARN("Running in Qt mode. Some features may not be available or behave differently.");
@@ -90,7 +91,9 @@ int main(int argc, char* argv[]) {
     std::string customConfigPath;
     bool debugMode = false;
     const auto run = app.add_subcommand("start", "Run the Web Shell System");
-    run->add_option("-c,--config", customConfigPath, "Path to the configuration file")->default_val(configPath)->check(CLI::ExistingFile);
+    run->add_option("-c,--config", customConfigPath, "Path to the configuration file")
+        ->default_val(configPath)
+        ->check(CLI::ExistingFile);
     run->add_flag("-d,--debug", debugMode, "Enable debug mode for verbose logging");
 
     run->callback([&customConfigPath, &debugMode] {

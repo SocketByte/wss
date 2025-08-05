@@ -1,4 +1,5 @@
 #include "notifd.h"
+
 #include "shell.h"
 #include "util/dbus_vreader.h"
 
@@ -17,27 +18,30 @@ void WSS::Notifd::StartExpirationTimer(uint32_t id, int32_t timeoutMs) {
     }).detach();
 }
 
-json_object* WSS::Notifd::CreateNotificationPayload(const Notification& notification) const {
-    json_object* payload = json_object_new_object();
-    json_object_object_add(payload, "id", json_object_new_int(static_cast<int32_t>(notification.Id)));
-    json_object_object_add(payload, "appName", json_object_new_string(notification.AppName.c_str()));
-    json_object_object_add(payload, "appIcon", json_object_new_string(notification.AppIcon.c_str()));
-    json_object_object_add(payload, "summary", json_object_new_string(notification.Summary.c_str()));
-    json_object_object_add(payload, "body", json_object_new_string(notification.Body.c_str()));
+json WSS::Notifd::CreateNotificationPayload(const Notification& notification) const {
+    json payload;
 
-    json_object* actionsArray = json_object_new_array();
+    payload["id"] = static_cast<int32_t>(notification.Id);
+    payload["appName"] = notification.AppName;
+    payload["appIcon"] = notification.AppIcon;
+    payload["summary"] = notification.Summary;
+    payload["body"] = notification.Body;
+
+    // Convert actions
+    payload["actions"] = json::array();
     for (const auto& action : notification.Actions) {
-        json_object_array_add(actionsArray, json_object_new_string(action.c_str()));
+        payload["actions"].push_back(action);
     }
-    json_object_object_add(payload, "actions", actionsArray);
-    json_object* hintsObject = json_object_new_object();
+
+    // Convert hints
+    json hints;
     for (const auto& [key, value] : notification.Hints) {
         auto valueStr = ReadDbusVariant(value);
-        json_object_object_add(hintsObject, key.c_str(), json_object_new_string(valueStr.c_str()));
+        hints[key] = valueStr;
     }
+    payload["hints"] = hints;
 
-    json_object_object_add(payload, "hints", hintsObject);
-    json_object_object_add(payload, "expireTimeout", json_object_new_int(notification.ExpireTimeout));
+    payload["expireTimeout"] = notification.ExpireTimeout;
 
     return payload;
 }
@@ -55,10 +59,11 @@ void WSS::Notifd::Start() {
             auto notify = [&](const std::string& app_name, const uint32_t replaces_id, const std::string& app_icon,
                               const std::string& summary, const std::string& body, const std::vector<std::string>& actions,
                               const std::map<std::string, sdbus::Variant>& hints, const int32_t expire_timeout) -> uint32_t {
-                const uint32_t id = (replaces_id == 0) ? m_NotificationCounter.fetch_add(1, std::memory_order_relaxed) : replaces_id;
+                const uint32_t id =
+                    (replaces_id == 0) ? m_NotificationCounter.fetch_add(1, std::memory_order_relaxed) : replaces_id;
 
-                WSS_DEBUG("Received notification: ID={}, AppName={}, Summary={}, Body={}, Actions={}, Hints={}, ExpireTimeout={}", id,
-                          app_name, summary, body, actions.size(), hints.size(), expire_timeout);
+                WSS_DEBUG("Received notification: ID={}, AppName={}, Summary={}, Body={}, Actions={}, Hints={}, ExpireTimeout={}",
+                          id, app_name, summary, body, actions.size(), hints.size(), expire_timeout);
 
                 {
                     const Notification notification{.Id = id,
@@ -74,7 +79,9 @@ void WSS::Notifd::Start() {
 
                 return id;
             };
-            auto closeNotification = [&](const uint32_t id) { SignalNotificationClosed(id, NotificationCloseReason::CLOSED_BY_CLIENT); };
+            auto closeNotification = [&](const uint32_t id) {
+                SignalNotificationClosed(id, NotificationCloseReason::CLOSED_BY_CLIENT);
+            };
             auto getCapabilities = []() -> std::vector<std::string> {
                 return {"body", "actions", "icon-static", "icon-multi", "persistence", "sound"};
             };
@@ -100,32 +107,31 @@ void WSS::Notifd::Start() {
 
 void WSS::Notifd::AddNotification(const Notification& notification) {
     std::lock_guard lock(m_NotificationsMutex);
+
     if (m_Notifications.find(notification.Id) != m_Notifications.end()) {
         WSS_WARN("Notification with ID {} already exists. Replacing it.", notification.Id);
     }
+
     m_Notifications[notification.Id] = notification;
 
-    json_object* payload = CreateNotificationPayload(notification);
+    nlohmann::json payload = CreateNotificationPayload(notification);
     m_Shell->GetIPC().Broadcast("notifd-notification", payload);
-    json_object_put(payload);
 
-    // Start expiration timer if timeout is set (> 0)
     if (notification.ExpireTimeout > 0) {
         StartExpirationTimer(notification.Id, notification.ExpireTimeout);
     }
 }
+
 void WSS::Notifd::SignalNotificationClosed(uint32_t id, NotificationCloseReason reason) {
     std::lock_guard lock(m_NotificationsMutex);
     auto it = m_Notifications.find(id);
+
     if (it != m_Notifications.end()) {
-        json_object* payload = json_object_new_object();
-        json_object_object_add(payload, "id", json_object_new_int(static_cast<int32_t>(it->second.Id)));
-        json_object_object_add(payload, "reason", json_object_new_int(static_cast<int32_t>(reason)));
+        nlohmann::json payload = {{"id", static_cast<int32_t>(it->second.Id)}, {"reason", static_cast<int32_t>(reason)}};
 
         m_Shell->GetIPC().Broadcast("notifd-notification-closed", payload);
-        json_object_put(payload);
-
         m_Notifications.erase(it);
+
         m_NotificationObject->emitSignal(sdbus::SignalName("CloseNotification"))
             .onInterface("org.freedesktop.Notifications")
             .withArguments(id, static_cast<uint32_t>(reason));
@@ -133,6 +139,7 @@ void WSS::Notifd::SignalNotificationClosed(uint32_t id, NotificationCloseReason 
         WSS_WARN("Notification with ID {} not found.", id);
     }
 }
+
 void WSS::Notifd::SignalActionInvoked(uint32_t id, const std::string& action) {
     std::lock_guard lock(m_NotificationsMutex);
     auto it = m_Notifications.find(id);

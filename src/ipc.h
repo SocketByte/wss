@@ -4,6 +4,7 @@
 #include <App.h>
 #include <WebSocket.h>
 #include <pch.h>
+
 #include <queue>
 
 namespace WSS {
@@ -32,14 +33,14 @@ class IPC {
     std::thread m_MousePositionThread;
     std::atomic_bool m_MousePositionRunning{false};
 
-    using ListenerCallback = std::function<void(Shell* shell, WSClient* client, const json_object* payload)>;
+    using ListenerCallback = std::function<void(Shell* shell, WSClient* client, const json& payload)>;
 
     std::mutex m_ListenersMutex;
     std::unordered_map<std::string, std::vector<ListenerCallback>> m_Listeners;
 
     void IPCCallback(WSS::WSClient* ws, std::string_view message, uWS::OpCode opCode);
 
-  public:
+   public:
     explicit IPC(Shell* shell) : m_Shell(shell) {
         WSS_ASSERT(m_Shell != nullptr, "Shell instance must not be null.");
         WSS_DEBUG("Initializing IPC with Shell instance.");
@@ -51,15 +52,15 @@ class IPC {
     IPC& operator=(IPC&&) = delete;
 
     void Start();
-    void Broadcast(const std::string& type, json_object* payload);
-    void Send(WSClient* wsi, const std::string& type, json_object* payload);
+    void Broadcast(const std::string& type, const json& payload);
+    void Send(WSClient* wsi, const std::string& type, const json& payload);
 
     void Listen(const std::string& type, ListenerCallback callback) {
         std::lock_guard lock(m_ListenersMutex);
         m_Listeners[type].push_back(std::move(callback));
     }
 
-    void Notify(const std::string& type, Shell* shell, WSClient* client, const json_object* payload) {
+    void Notify(const std::string& type, Shell* shell, WSClient* client, const json& payload) {
         std::lock_guard lock(m_ListenersMutex);
         WSS_ASSERT(shell != nullptr, "Shell instance must not be null.");
         WSS_ASSERT(client != nullptr, "IPCClientInfo must not be null.");

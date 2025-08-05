@@ -1,9 +1,9 @@
 #include "shell.h"
 
+#include <csignal>
+
 #include "modules/notifd.h"
 #include "util/dimparser.h"
-
-#include <csignal>
 
 void WSS::Shell::LoadConfig(const std::string& configPath) {
     toml::table config;
@@ -19,7 +19,8 @@ void WSS::Shell::LoadConfig(const std::string& configPath) {
     }
 
     toml::table* settingsConfig = config.get("settings")->as_table();
-    m_Settings.m_FrontendPort = settingsConfig->get("frontend_port") ? settingsConfig->get("frontend_port")->value_or<int>(3000) : 0;
+    m_Settings.m_FrontendPort =
+        settingsConfig->get("frontend_port") ? settingsConfig->get("frontend_port")->value_or<int>(3000) : 0;
     m_Settings.m_IpcPort = settingsConfig->get("ipc_port") ? settingsConfig->get("ipc_port")->value_or<int>(8080) : 0;
     m_Settings.m_NotificationTimeout =
         settingsConfig->get("notification_timeout") ? settingsConfig->get("notification_timeout")->value_or<int>(5000) : 0;
@@ -83,13 +84,11 @@ int WSS::Shell::Init(const std::string& appId, const std::string& configPath) {
     // std::signal(SIGTERM, HandleSignal);
 
     LoadConfig(configPath);
-    m_IPC.Start();
-    m_Notifd.Start();
-    m_Appd.Start();
 
     // Yeah...
     qputenv("QT_WEBENGINE_CHROMIUM_FLAGS",
-            "--use-gl=egl --enable-zero-copy --ozone-platform=wayland -ozone-platform-hint=auto --ignore-gpu-blocklist "
+            "--use-gl=egl --enable-zero-copy --ozone-platform=wayland -ozone-platform-hint=auto "
+            "--ignore-gpu-blocklist "
             "--enable-gpu-rasterization --disable-frame-rate-limit --no-sandbox"
             "--disable-software-rasterizer --disable-software-vsync --use-vulkan "
             "--enable-unsafe-webgpu --disable-sync-preferences --disable-gpu-vsync "
@@ -170,7 +169,8 @@ void WSS::Shell::OnActivate(RenderApplication* app, ActivateCallbackPtr data) {
         std::string marginLeft = info->get("margin_left") ? info->get("margin_left")->value_or<std::string>("0") : "0";
         std::string marginRight = info->get("margin_right") ? info->get("margin_right")->value_or<std::string>("0") : "0";
 
-        int _QtPadding = info->get("__QT_auto_click_region_padding") ? info->get("__QT_auto_click_region_padding")->value_or<int>(0) : 0;
+        int _QtPadding =
+            info->get("__QT_auto_click_region_padding") ? info->get("__QT_auto_click_region_padding")->value_or<int>(0) : 0;
 
         std::vector<WidgetMonitorInfo> monitorIds;
         if (!monitors) {
@@ -198,8 +198,8 @@ void WSS::Shell::OnActivate(RenderApplication* app, ActivateCallbackPtr data) {
                     }
                     auto regionTable = region.as_table();
                     std::string regionName = regionTable->get("name")->value_or<std::string>("");
-                    int x = DimensionParser::Parse(DimensionParser::DimensionType::WIDTH, regionTable->get("x")->value_or<std::string>("0"),
-                                                   monitorId);
+                    int x = DimensionParser::Parse(DimensionParser::DimensionType::WIDTH,
+                                                   regionTable->get("x")->value_or<std::string>("0"), monitorId);
                     int y = DimensionParser::Parse(DimensionParser::DimensionType::HEIGHT,
                                                    regionTable->get("y")->value_or<std::string>("0"), monitorId);
                     int regionWidth = DimensionParser::Parse(DimensionParser::DimensionType::WIDTH,
@@ -291,14 +291,18 @@ void WSS::Shell::OnActivate(RenderApplication* app, ActivateCallbackPtr data) {
                               .DefaultHidden = hidden,
                               ._QT_padding = _QtPadding};
 
-        WSS_DEBUG("Creating widget with info: Name='{}', Route='{}', Layer='{}', "
-                  "AnchorBitmask='{}', Exclusivity='{}', DefaultHidden='{}'",
-                  widgetInfo.Name, widgetInfo.Route, static_cast<int>(widgetInfo.Layer), static_cast<int>(widgetInfo.AnchorBitmask),
-                  widgetInfo.Exclusivity, widgetInfo.DefaultHidden);
+        WSS_DEBUG(
+            "Creating widget with info: Name='{}', Route='{}', Layer='{}', "
+            "AnchorBitmask='{}', Exclusivity='{}', DefaultHidden='{}'",
+            widgetInfo.Name, widgetInfo.Route, static_cast<int>(widgetInfo.Layer), static_cast<int>(widgetInfo.AnchorBitmask),
+            widgetInfo.Exclusivity, widgetInfo.DefaultHidden);
 
         for (const auto& monitor : widgetInfo.Monitors) {
-            WSS_DEBUG("-- Monitor ID: {}, Width: {}, Height: {}, Margins: (Top: {}, Bottom: {}, Left: {}, Right: {})", monitor.MonitorId,
-                      monitor.Width, monitor.Height, monitor.MarginTop, monitor.MarginBottom, monitor.MarginLeft, monitor.MarginRight);
+            WSS_DEBUG(
+                "-- Monitor ID: {}, Width: {}, Height: {}, Margins: (Top: {}, Bottom: {}, Left: "
+                "{}, Right: {})",
+                monitor.MonitorId, monitor.Width, monitor.Height, monitor.MarginTop, monitor.MarginBottom, monitor.MarginLeft,
+                monitor.MarginRight);
             for (const auto& [regionName, regionInfo] : monitor.ClickRegionMap) {
                 WSS_DEBUG("   -- Click Region: {}, X: {}, Y: {}, Width: {}, Height: {}", regionName, regionInfo.X, regionInfo.Y,
                           regionInfo.Width, regionInfo.Height);
@@ -309,4 +313,8 @@ void WSS::Shell::OnActivate(RenderApplication* app, ActivateCallbackPtr data) {
         widget->Create(shell);
         shell.m_Widgets.emplace(name, std::move(widget));
     }
+
+    shell.m_IPC.Start();
+    shell.m_Notifd.Start();
+    shell.m_Appd.Start();
 }

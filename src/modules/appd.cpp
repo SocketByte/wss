@@ -1,9 +1,10 @@
 #include "appd.h"
 
-#include <filesystem>
-#include <regex>
 #include <shell.h>
 #include <sys/inotify.h>
+
+#include <filesystem>
+#include <regex>
 
 namespace fs = std::filesystem;
 
@@ -14,8 +15,7 @@ std::vector<int> GetAvailableIconSizes(const std::string& iconName) {
     std::regex sizeDirRegex(R"((\d+)x\1)"); // matches "16x16", "32x32", etc.
 
     for (const auto& entry : std::filesystem::directory_iterator(basePath)) {
-        if (!entry.is_directory())
-            continue;
+        if (!entry.is_directory()) continue;
 
         std::smatch match;
         std::string dirName = entry.path().filename().string();
@@ -45,10 +45,8 @@ std::string EncodeBase64(const std::vector<unsigned char>& data) {
             valb -= 6;
         }
     }
-    if (valb > -6)
-        result.push_back(b64_table[((val << 8) >> (valb + 8)) & 0x3F]);
-    while (result.size() % 4)
-        result.push_back('=');
+    if (valb > -6) result.push_back(b64_table[((val << 8) >> (valb + 8)) & 0x3F]);
+    while (result.size() % 4) result.push_back('=');
     return result;
 }
 
@@ -64,13 +62,12 @@ std::optional<fs::path> FindIconPath(const std::string& iconName, int sizeHint =
 
     for (const auto& dir : iconDirs) {
         for (const auto& ext : extensions) {
-            fs::path iconPath = fs::path(dir) / (std::to_string(sizeHint) + "x" + std::to_string(sizeHint)) / "apps" / (iconName + ext);
-            if (fs::exists(iconPath))
-                return iconPath;
+            fs::path iconPath =
+                fs::path(dir) / (std::to_string(sizeHint) + "x" + std::to_string(sizeHint)) / "apps" / (iconName + ext);
+            if (fs::exists(iconPath)) return iconPath;
 
             iconPath = fs::path(dir) / (iconName + ext);
-            if (fs::exists(iconPath))
-                return iconPath;
+            if (fs::exists(iconPath)) return iconPath;
         }
     }
     return std::nullopt;
@@ -95,20 +92,17 @@ WSS::Application WSS::Appd::ReadDesktopFile(const std::string& filePath) {
         line.erase(0, line.find_first_not_of(" \t\n\r"));
         line.erase(line.find_last_not_of(" \t\n\r") + 1);
 
-        if (line.empty() || line[0] == '#')
-            continue;
+        if (line.empty() || line[0] == '#') continue;
 
         if (line[0] == '[' && line.back() == ']') {
             inDesktopEntry = (line == "[Desktop Entry]");
             continue;
         }
 
-        if (!inDesktopEntry)
-            continue;
+        if (!inDesktopEntry) continue;
 
         auto pos = line.find('=');
-        if (pos == std::string::npos)
-            continue;
+        if (pos == std::string::npos) continue;
 
         std::string key = line.substr(0, pos);
         std::string value = line.substr(pos + 1);
@@ -137,8 +131,7 @@ WSS::Application WSS::Appd::ReadDesktopFile(const std::string& filePath) {
         auto availableSizes = GetAvailableIconSizes(icon); // Returns list like {16, 24, 32, 48, 64, 128, 256}
 
         auto findClosestSize = [&](int targetSize) -> std::optional<int> {
-            if (availableSizes.empty())
-                return std::nullopt;
+            if (availableSizes.empty()) return std::nullopt;
 
             auto closest = availableSizes.front();
             for (int size : availableSizes) {
@@ -264,30 +257,30 @@ std::string ReplaceDesktopEntryPlaceholders(const std::string& exec, const std::
             std::string replacement;
 
             switch (next) {
-            case 'f':
-                replacement = context.count("%f") ? context.at("%f") : "";
-                break;
-            case 'F':
-                replacement = context.count("%F") ? context.at("%F") : "";
-                break;
-            case 'u':
-                replacement = context.count("%u") ? context.at("%u") : "";
-                break;
-            case 'U':
-                replacement = context.count("%U") ? context.at("%U") : "";
-                break;
-            case 'i':
-                replacement = context.count("%i") ? context.at("%i") : "";
-                break;
-            case 'c':
-                replacement = context.count("%c") ? context.at("%c") : "";
-                break;
-            case 'k':
-                replacement = context.count("%k") ? context.at("%k") : "";
-                break;
-            default:
-                replacement = "%" + std::string(1, next);
-                break;
+                case 'f':
+                    replacement = context.count("%f") ? context.at("%f") : "";
+                    break;
+                case 'F':
+                    replacement = context.count("%F") ? context.at("%F") : "";
+                    break;
+                case 'u':
+                    replacement = context.count("%u") ? context.at("%u") : "";
+                    break;
+                case 'U':
+                    replacement = context.count("%U") ? context.at("%U") : "";
+                    break;
+                case 'i':
+                    replacement = context.count("%i") ? context.at("%i") : "";
+                    break;
+                case 'c':
+                    replacement = context.count("%c") ? context.at("%c") : "";
+                    break;
+                case 'k':
+                    replacement = context.count("%k") ? context.at("%k") : "";
+                    break;
+                default:
+                    replacement = "%" + std::string(1, next);
+                    break;
             }
 
             result += replacement;
@@ -309,9 +302,9 @@ void WSS::Appd::RunApplication(const std::string& prefix, const std::string& app
     }
 
     const Application& app = it->second;
-    std::string command =
-        prefix + " " +
-        ReplaceDesktopEntryPlaceholders(app.Exec, {{"%f", ""}, {"%F", ""}, {"%u", ""}, {"%U", ""}, {"%i", ""}, {"%c", ""}, {"%k", ""}});
+    std::string command = prefix + " " +
+                          ReplaceDesktopEntryPlaceholders(
+                              app.Exec, {{"%f", ""}, {"%F", ""}, {"%u", ""}, {"%U", ""}, {"%i", ""}, {"%c", ""}, {"%k", ""}});
 
     // Run app through "hyprctl dispatch exec --"
     std::string fullCommand = "hyprctl dispatch exec -- " + command;
@@ -324,16 +317,16 @@ void WSS::Appd::RunApplication(const std::string& prefix, const std::string& app
     }
 }
 void WSS::Appd::SendAppIPC(const Application& app) {
-    json_object* payload = json_object_new_object();
-    json_object_object_add(payload, "id", json_object_new_string(app.Id.c_str()));
-    json_object_object_add(payload, "name", json_object_new_string(app.Name.c_str()));
-    json_object_object_add(payload, "comment", json_object_new_string(app.Comment.c_str()));
-    json_object_object_add(payload, "exec", json_object_new_string(app.Exec.c_str()));
-    json_object_object_add(payload, "iconBase64Large", json_object_new_string(app.IconBase64Large.c_str()));
-    json_object_object_add(payload, "iconBase64Small", json_object_new_string(app.IconBase64Small.c_str()));
+    nlohmann::json payload;
+
+    payload["id"] = app.Id;
+    payload["name"] = app.Name;
+    payload["comment"] = app.Comment;
+    payload["exec"] = app.Exec;
+    payload["iconBase64Large"] = app.IconBase64Large;
+    payload["iconBase64Small"] = app.IconBase64Small;
 
     m_Shell->GetIPC().Broadcast("appd-application-added", payload);
-    json_object_put(payload);
 }
 
 void WSS::Appd::Start() {

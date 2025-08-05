@@ -2,9 +2,10 @@
 #define PCH_H
 
 #include <config.h>
-
-#include "json-c/json.h"
+#include <gio/gio.h>
 #include <sdbus-c++/sdbus-c++.h>
+
+#include <nlohmann/json.hpp>
 #include <toml++/toml.hpp>
 
 #ifndef WSS_USE_QT
@@ -14,10 +15,13 @@
 #include <webkitgtk-6.0/webkit/webkit.h>
 #else
 #include <LayerShellQt/shell.h>
+
 #include <QApplication>
 #include <QVBoxLayout>
 #include <QtWebEngineWidgets/QWebEngineView>
 #endif // WSS_USE_QT
+
+using json = nlohmann::json;
 
 #include <memory>
 #include <string>
@@ -32,10 +36,10 @@
 #define WSS_TRACE(message, ...) spdlog::trace(message, ##__VA_ARGS__)
 #define WSS_CRITICAL(message, ...) spdlog::critical(message, ##__VA_ARGS__)
 
-#define WSS_ASSERT(condition, message)                                                                                                     \
-    if (!(condition)) {                                                                                                                    \
-        WSS_CRITICAL("Assertion failed: {}, in file {}, line {}", message, __FILE__, __LINE__);                                            \
-        std::abort();                                                                                                                      \
+#define WSS_ASSERT(condition, message)                                                          \
+    if (!(condition)) {                                                                         \
+        WSS_CRITICAL("Assertion failed: {}, in file {}, line {}", message, __FILE__, __LINE__); \
+        std::abort();                                                                           \
     }
 
 #endif // PCH_H

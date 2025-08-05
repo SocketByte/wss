@@ -29,7 +29,7 @@ class Appd {
     void WatchApplicationDirectory();
     void LoadApplication(const std::string& filePath);
 
-  public:
+   public:
     explicit Appd(Shell* shell) : m_Shell(shell) {
         WSS_ASSERT(m_Shell != nullptr, "Shell instance must not be null.");
         WSS_DEBUG("Appd initialized with Shell instance.");

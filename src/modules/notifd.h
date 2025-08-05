@@ -38,9 +38,9 @@ class Notifd {
     std::thread m_Thread;
 
     void StartExpirationTimer(uint32_t id, int32_t timeoutMs);
-    json_object* CreateNotificationPayload(const Notification& notification) const;
+    json CreateNotificationPayload(const Notification& notification) const;
 
-  public:
+   public:
     explicit Notifd(Shell* shell) : m_Shell(shell) {
         WSS_ASSERT(m_Shell != nullptr, "Shell instance must not be null.");
         WSS_DEBUG("Notifd initialized with Shell instance.");
