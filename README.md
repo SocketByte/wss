@@ -6,7 +6,7 @@
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/SocketByte/wss)
 ![GitHub last commit](https://img.shields.io/github/last-commit/SocketByte/wss)
 ![GitHub top language](https://img.shields.io/github/languages/top/SocketByte/wss)
-![GitHub contributors](https://img.shields.io/github/contributors/SocketByte/wss)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/SocketByte/wss/cmake-multi-platform.yml)
 
 WSS (Web Shell System) is an **experimental shell building framework** for Wayland allowing you to easily create shell
 widgets with
