@@ -38,24 +38,29 @@ jobs:
             bash -c "
               set -euxo pipefail
 
-              # Set up pacman
+              # Setup pacman
               pacman-key --init
               pacman-key --populate archlinux
               pacman -Syu --noconfirm
 
-              # Install dependencies
-              pacman -S --noconfirm base-devel cmake ninja git zlib sdbus-cpp qt6 qt6-webengine qt6-wayland layer-shell-qt
+              # Install base-devel, sudo, and other dependencies
+              pacman -S --noconfirm base-devel sudo git cmake ninja json-c zlib sdbus-cpp qt6 qt6-wayland qt6-webengine layer-shell-qt
 
-              # Install yay (AUR helper)
-              cd /tmp
+              # Create a non-root user
+              useradd -m builduser
+              echo 'builduser ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+              # Switch to non-root user and install yay + uwebsockets
+              su builduser <<EOF
+              set -euxo pipefail
+              cd ~
               git clone https://aur.archlinux.org/yay.git
               cd yay
               makepkg -si --noconfirm
-
-              # Install AUR package
               yay -S --noconfirm uwebsockets
+              EOF
 
-              # Build project
+              # Back to root, build the project
               ldd --version
               cmake -B build -G Ninja \
                 -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
