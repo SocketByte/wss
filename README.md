@@ -1,6 +1,5 @@
-# Web Shell System (WSS)
-
-![WSS Logo](.github/images/logo.png)
+<div align="center">
+<img src=".github/images/logo.png" alt="WSS Logo" width="700"/>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
 ![GitHub issues](https://img.shields.io/github/issues/SocketByte/wss)
@@ -14,6 +13,7 @@ well-established web
 technologies. It is built with Qt6 and QtWebEngine in C++ and integrates seamlessly
 with any web framework your heart
 desires, such as React (or Preact), Vue, Angular or just plain HTML/JS.
+</div>
 
 > [!CAUTION]
 > WSS is currently in super early development and is not yet ready to be called even remotely "feature complete". It is
