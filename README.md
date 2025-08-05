@@ -8,12 +8,12 @@
 ![GitHub top language](https://img.shields.io/github/languages/top/SocketByte/wss)
 ![GitHub contributors](https://img.shields.io/github/contributors/SocketByte/wss)
 
-WSS (Web Shell System) is an experimental shell building framework for Wayland allowing you to easily create shell
+WSS (Web Shell System) is an **experimental shell building framework** for Wayland allowing you to easily create shell
 widgets with
 well-established web
 technologies. It is built with Qt6 and QtWebEngine in C++ and integrates seamlessly
 with any web framework your heart
-desires, such as React (or Preact), Vue, Angular or just plain HTML/JS.
+desires, such as _React (or Preact), Vue, Angular or just plain HTML/JS_.
 </div>
 
 > [!CAUTION]
