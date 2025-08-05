@@ -11,7 +11,6 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4)
 pkg_check_modules(WEBKITGTK REQUIRED webkitgtk-6.0)
-pkg_check_modules(JSONC REQUIRED json-c)
 pkg_check_modules(SOUP REQUIRED libsoup-3.0)
 pkg_check_modules(GIOMM REQUIRED giomm-2.4)
 
@@ -61,7 +60,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         lib/nlohmann_json/include
         ${GTK4_INCLUDE_DIRS}
         ${WEBKITGTK_INCLUDE_DIRS}
-        ${JSONC_INCLUDE_DIRS}
         ${SOUP_INCLUDE_DIRS}
         ${GIOMM_INCLUDE_DIRS}
 )
@@ -72,7 +70,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         gtk4-layer-shell
         ${GTK4_LIBRARIES}
         ${WEBKITGTK_LIBRARIES}
-        ${JSONC_LIBRARIES}
         ${SOUP_LIBRARIES}
         ${WAYLAND_LIBRARIES}
         ${GIOMM_LIBRARIES}
