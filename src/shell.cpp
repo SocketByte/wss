@@ -31,48 +31,9 @@ static void HandleSignal(int signal) {
     if (signal == SIGINT || signal == SIGTERM) {
         WSS::IsRunning = false;
         WSS_INFO("Shutdown signal received (signal: {}).", signal);
-        // If GTK is running, this safely quits the main loop
-#ifndef WSS_USE_QT
-        g_application_quit(g_application_get_default());
-#else
-
-#endif
     }
 }
 
-#ifndef WSS_USE_QT
-int WSS::Shell::Init(const std::string& appId, const GApplicationFlags flags, const std::string& configPath) {
-    WSS_ASSERT(!appId.empty(), "Application ID must not be empty.");
-
-    // Register shutdown signal handlers
-    std::signal(SIGINT, HandleSignal);
-    std::signal(SIGTERM, HandleSignal);
-
-    const auto activateData = std::make_shared<ActivateCallbackData>();
-    activateData->shell = this;
-    activateData->configPath = configPath;
-    LoadConfig(configPath);
-
-    m_Application = GTK_APPLICATION(gtk_application_new(appId.c_str(), flags));
-    g_signal_connect(m_Application, "activate", G_CALLBACK(OnActivate), activateData.get());
-
-    // Run the additional daemons
-    m_IPC.Start();
-    m_Notifd.Start();
-
-    WSS_INFO("WSS is running. Press Ctrl+C to exit.");
-    WSS_INFO("Application ID: {}", appId);
-
-    const int status = g_application_run(G_APPLICATION(m_Application), 0, nullptr);
-    if (status != 0) {
-        WSS_ERROR("Failed to run the GTK application with status code: {}", status);
-    }
-
-    return status;
-}
-#endif
-
-#ifdef WSS_USE_QT
 int WSS::Shell::Init(const std::string& appId, const std::string& configPath) {
     int argc = 1;
     char* argv[] = {const_cast<char*>(appId.c_str()), nullptr};
@@ -119,7 +80,6 @@ int WSS::Shell::Init(const std::string& appId, const std::string& configPath) {
     OnActivate(&app, activateData.get());
     return QApplication::exec();
 }
-#endif
 
 void WSS::Shell::OnActivate(RenderApplication* app, ActivateCallbackPtr data) {
     WSS_ASSERT(app != nullptr, "GTK Application must not be null.");

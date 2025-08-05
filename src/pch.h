@@ -1,25 +1,15 @@
 #ifndef PCH_H
 #define PCH_H
 
-#include <config.h>
-#include <gio/gio.h>
-#include <sdbus-c++/sdbus-c++.h>
-
-#include <nlohmann/json.hpp>
-#include <toml++/toml.hpp>
-
-#ifndef WSS_USE_QT
-#include <glib.h>
-#include <gtk/gtk.h>
-#include <gtk4-layer-shell.h>
-#include <webkitgtk-6.0/webkit/webkit.h>
-#else
 #include <LayerShellQt/shell.h>
+#include <config.h>
+#include <sdbus-c++/sdbus-c++.h>
 
 #include <QApplication>
 #include <QVBoxLayout>
 #include <QtWebEngineWidgets/QWebEngineView>
-#endif // WSS_USE_QT
+#include <nlohmann/json.hpp>
+#include <toml++/toml.hpp>
 
 using json = nlohmann::json;
 

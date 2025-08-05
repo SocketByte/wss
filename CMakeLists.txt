@@ -9,9 +9,8 @@ find_package(sdbus-c++ REQUIRED)
 find_package(LayerShellQt REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4)
-pkg_check_modules(WEBKITGTK REQUIRED webkitgtk-6.0)
-pkg_check_modules(SOUP REQUIRED libsoup-3.0)
+
+pkg_check_modules(GLIB REQUIRED glib-2.0)
 pkg_check_modules(GIOMM REQUIRED giomm-2.4)
 
 add_subdirectory(lib/spdlog)
@@ -22,11 +21,6 @@ include_directories(/usr/include/gtk4-layer-shell)
 link_directories(/usr/lib)
 
 include_directories(src)
-
-if (DEFINED WSS_USE_QT)
-    add_compile_definitions(${PROJECT_NAME} -DWSS_USE_QT)
-    message(STATUS "Building with Qt support")
-endif ()
 
 add_executable(${PROJECT_NAME}
         src/main.cpp
@@ -47,32 +41,25 @@ add_executable(${PROJECT_NAME}
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/pch.h)
 
+message("GLIB_INCLUDE_DIRS: ${GLIB_INCLUDE_DIRS}")
+message("GIOMM_INCLUDE_DIRS: ${GIOMM_INCLUDE_DIRS}")
+
 target_include_directories(${PROJECT_NAME} PRIVATE
-        /usr/include/gtk4-layer-shell
-        /usr/include/webkitgtk-6.0/
-        /usr/include/webkitgtk-6.0/webkit
+        ${GLIB_INCLUDE_DIRS}
+        ${GIOMM_INCLUDE_DIRS}
         /usr/include/LayerShellQt
+        /usr/include/uWebSockets
         lib/cli11
         lib/spdlog/include
         lib/tomlplusplus/include
-        lib/uWebSockets/src
-        lib/uWebSockets/uSockets/src
         lib/nlohmann_json/include
-        ${GTK4_INCLUDE_DIRS}
-        ${WEBKITGTK_INCLUDE_DIRS}
-        ${SOUP_INCLUDE_DIRS}
-        ${GIOMM_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-        ${CMAKE_SOURCE_DIR}/lib/uWebSockets/uSockets/uSockets.a
-        /usr/lib/libz.so
-        gtk4-layer-shell
-        ${GTK4_LIBRARIES}
-        ${WEBKITGTK_LIBRARIES}
-        ${SOUP_LIBRARIES}
-        ${WAYLAND_LIBRARIES}
+        ${GLIB_LIBRARIES}
         ${GIOMM_LIBRARIES}
+        /usr/lib/libusockets.so
+        /usr/lib/libz.so
         spdlog
         tomlplusplus::tomlplusplus
         SDBusCpp::sdbus-c++
@@ -81,9 +68,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         LayerShellQt::Interface
         ${NLOHMANN_JSON_TARGET_NAME}
 
-)
-target_compile_options(${PROJECT_NAME} PRIVATE
-        ${WEBKIT2GTK_CFLAGS_OTHER}
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

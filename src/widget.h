@@ -9,13 +9,9 @@ namespace WSS {
 class Shell;
 }
 namespace WSS {
-#ifndef WSS_USE_QT
-typedef GtkWindow Window;
-typedef WebKitWebView WebView;
-#else
+
 typedef QWidget Window;
 typedef QWebEngineView WebView;
-#endif // WSS_USE_QT
 
 /**
  * Defines the anchor points for a widget.
@@ -31,21 +27,12 @@ enum class WidgetAnchor : uint8_t {
  * Defines the layer in which a widget will be displayed.
  * The layer determines the stacking order of the widget in relation to other widgets.
  */
-#ifndef WSS_USE_QT
-enum class WidgetLayer : uint8_t {
-    TOP = GTK_LAYER_SHELL_LAYER_TOP,
-    BOTTOM = GTK_LAYER_SHELL_LAYER_BOTTOM,
-    OVERLAY = GTK_LAYER_SHELL_LAYER_OVERLAY,
-    BACKGROUND = GTK_LAYER_SHELL_LAYER_BACKGROUND,
-};
-#else
 enum class WidgetLayer : uint8_t {
     TOP = LayerShellQt::Window::LayerTop,
     BOTTOM = LayerShellQt::Window::LayerBottom,
     OVERLAY = LayerShellQt::Window::LayerOverlay,
     BACKGROUND = LayerShellQt::Window::LayerBackground,
 };
-#endif
 
 /**
  * Represents the clickable region information for a widget.
@@ -106,17 +93,9 @@ class Widget {
     ~Widget() noexcept {
         try {
             for (auto& [monitorId, window] : m_Windows) {
-#ifndef WSS_USE_QT
-                if (window) {
-                    gtk_window_destroy(window);
-                }
-#endif
-
-#ifdef WSS_USE_QT
                 if (window) {
                     window->deleteLater();
                 }
-#endif
             }
 
             m_Windows.clear();
@@ -194,25 +173,6 @@ class Widget {
         monitorInfo.ClickRegionMap[regionName] = regionInfo;
 
         if (auto* window = GetWindow(monitorId); window) {
-#ifndef WSS_USE_QT
-            cairo_region_t* region = cairo_region_create();
-
-            for (const auto& [regionName, regionInfo] : monitorInfo.ClickRegionMap) {
-                GdkRectangle clickable_area;
-                clickable_area.x = regionInfo.X;
-                clickable_area.y = regionInfo.Y;
-                clickable_area.width = regionInfo.Width;
-                clickable_area.height = regionInfo.Height;
-
-                cairo_region_union_rectangle(region, &clickable_area);
-            }
-
-            auto* surface = gtk_native_get_surface(GTK_NATIVE(GTK_WIDGET(window)));
-            gdk_surface_set_input_region(surface, region);
-            gtk_widget_queue_draw(GTK_WIDGET(window));
-
-            cairo_region_destroy(region);
-#else
             QRegion inputRegion(0, 0, 1, 1);
             for (const auto& [name, info] : monitorInfo.ClickRegionMap) {
                 if (info.X == 0 && info.Y == 0 && info.Width == 0 && info.Height == 0) {
@@ -226,7 +186,6 @@ class Widget {
 
             window->setMask(inputRegion);
             window->update();
-#endif
         } else {
             WSS_ERROR("Attempted to update clickable region for an invalid or non-existent window on monitor ID: {}", monitorId);
         }
@@ -238,11 +197,7 @@ class Widget {
      */
     void Reload(const uint8_t monitorId) const {
         if (auto* view = GetWebView(monitorId); view) {
-#ifndef WSS_USE_QT
-            webkit_web_view_reload(view);
-#else
             view->reload();
-#endif
             return;
         }
         WSS_WARN("Attempted to reload an invalid or non-existent web view on monitor ID: {}", monitorId);
@@ -253,11 +208,7 @@ class Widget {
      */
     void ReloadAll() const {
         for (const auto& [monitorId, view] : m_Views) {
-#ifndef WSS_USE_QT
-            webkit_web_view_reload(view);
-#else
             view->reload();
-#endif
         }
     }
 
@@ -270,11 +221,7 @@ class Widget {
      */
     void SetVisible(const uint8_t monitorId, const bool visible) const {
         if (auto* window = GetWindow(monitorId); window) {
-#ifndef WSS_USE_QT
-            gtk_widget_set_visible(GTK_WIDGET(window), visible);
-#else
             window->setVisible(visible);
-#endif
 
             // If the window is hidden then there's no need for exclusivity.
             // TODO: Determine if that's ever something a user would wish to omit.
@@ -296,11 +243,7 @@ class Widget {
      */
     void SetVisibleAll(const bool visible) const {
         for (const auto& [monitorId, window] : m_Windows) {
-#ifndef WSS_USE_QT
-            gtk_widget_set_visible(GTK_WIDGET(window), visible);
-#else
             window->setVisible(visible);
-#endif
 
             if (m_Info.Exclusivity) {
                 SetExclusivity(monitorId, visible);
@@ -313,11 +256,6 @@ class Widget {
 
     void SetKeyboardInteractivity(const uint8_t monitorId, const bool interactive) const {
         if (auto* window = GetWindow(monitorId); window) {
-#ifndef WSS_USE_QT
-            gtk_layer_set_keyboard_mode(
-                window, interactive ? GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND : GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
-
-#else
             auto* layer = LayerShellQt::Window::get(window->windowHandle());
             if (layer) {
                 layer->setKeyboardInteractivity(interactive ? LayerShellQt::Window::KeyboardInteractivityOnDemand
@@ -326,7 +264,6 @@ class Widget {
             } else {
                 WSS_WARN("LayerShellQt::Window not found for monitor ID: {}", monitorId);
             }
-#endif
         }
     }
 
@@ -339,23 +276,12 @@ class Widget {
      */
     void SetExclusivity(const uint8_t monitorId, const bool exclusive, int zone = 0) const {
         if (auto* window = GetWindow(monitorId); window) {
-#ifndef WSS_USE_QT
-            if (exclusive) {
-                gtk_layer_auto_exclusive_zone_enable(window);
-                if (zone) {
-                    gtk_layer_set_exclusive_zone(window, zone);
-                }
-            } else {
-                gtk_layer_set_exclusive_zone(window, 0);
-            }
-#else
             auto* layer = LayerShellQt::Window::get(window->windowHandle());
             if (exclusive) {
                 layer->setExclusiveZone(zone);
             } else {
                 layer->setExclusiveZone(0);
             }
-#endif
             return;
         }
         WSS_WARN("Attempted to set exclusivity for an invalid or non-existent window on monitor ID: {}", monitorId);
