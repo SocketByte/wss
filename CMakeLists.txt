@@ -8,10 +8,6 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 find_package(sdbus-c++ REQUIRED)
 find_package(LayerShellQt REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets)
-find_package(PkgConfig REQUIRED)
-
-pkg_check_modules(GLIB REQUIRED glib-2.0)
-pkg_check_modules(GIOMM REQUIRED giomm-2.4)
 
 add_subdirectory(lib/spdlog)
 add_subdirectory(lib/tomlplusplus)
@@ -41,12 +37,7 @@ add_executable(${PROJECT_NAME}
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/pch.h)
 
-message("GLIB_INCLUDE_DIRS: ${GLIB_INCLUDE_DIRS}")
-message("GIOMM_INCLUDE_DIRS: ${GIOMM_INCLUDE_DIRS}")
-
 target_include_directories(${PROJECT_NAME} PRIVATE
-        ${GLIB_INCLUDE_DIRS}
-        ${GIOMM_INCLUDE_DIRS}
         /usr/include/LayerShellQt
         /usr/include/uWebSockets
         lib/cli11
@@ -56,8 +47,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-        ${GLIB_LIBRARIES}
-        ${GIOMM_LIBRARIES}
         /usr/lib/libusockets.so
         /usr/lib/libz.so
         spdlog
