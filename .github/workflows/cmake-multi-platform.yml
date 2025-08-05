@@ -37,10 +37,25 @@ jobs:
             archlinux:latest \
             bash -c "
               set -euxo pipefail
+
+              # Set up pacman
               pacman-key --init
               pacman-key --populate archlinux
               pacman -Syu --noconfirm
-              pacman -S --noconfirm base-devel cmake ninja git gtk4 gtk4-layer-shell webkitgtk-6.0 json-c zlib sdbus-cpp qt6 qt6-webengine layer-shell-qt
+
+              # Install dependencies
+              pacman -S --noconfirm base-devel cmake ninja git zlib sdbus-cpp qt6 qt6-webengine qt6-wayland layer-shell-qt
+
+              # Install yay (AUR helper)
+              cd /tmp
+              git clone https://aur.archlinux.org/yay.git
+              cd yay
+              makepkg -si --noconfirm
+
+              # Install AUR package
+              yay -S --noconfirm uwebsockets
+
+              # Build project
               ldd --version
               cmake -B build -G Ninja \
                 -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
