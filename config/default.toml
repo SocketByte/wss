@@ -49,15 +49,15 @@ click_regions = []
 hidden = false
 __QT_auto_click_region_padding = 20
 
-#[widgets.debug]
-#route = "_DEBUG"
-#width = "600"
-#height = "600"
-#layer = "top"
-#anchor = ["left", "top"]
-#monitors = [0]
-#exclusivity = false
-#click_regions = [
-#    { name = "area", x = "0", y = "0", width = "600", height = "600" }
-#]
-#hidden = false
+[widgets.debug]
+route = "_DEBUG"
+width = "600"
+height = "600"
+layer = "top"
+anchor = ["left", "top"]
+monitors = [0]
+exclusivity = false
+click_regions = [
+    { name = "area", x = "0", y = "0", width = "600", height = "600" }
+]
+hidden = true

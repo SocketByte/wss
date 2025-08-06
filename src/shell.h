@@ -5,6 +5,7 @@
 #include <pch.h>
 #include <widget.h>
 
+#include "dispatch/zmq_rep.h"
 #include "ipc.h"
 #include "modules/appd.h"
 
@@ -45,7 +46,7 @@ static double GetScreenHeight(int monitorId) {
 static std::atomic_bool IsRunning{true};
 
 class ShellSettings {
-   public:
+  public:
     int m_FrontendPort;
     int m_IpcPort;
     int m_NotificationTimeout;
@@ -57,10 +58,13 @@ class ShellSettings {
  */
 class Shell {
     RenderApplication* m_Application = nullptr;
+
     IPC m_IPC{this};
     Notifd m_Notifd{this};
     Appd m_Appd{this};
+
     ShellSettings m_Settings;
+    ZMQRep m_ZMQRep;
 
     std::unordered_map<std::string, std::shared_ptr<Widget>> m_Widgets;
 
@@ -68,7 +72,7 @@ class Shell {
 
     void LoadConfig(const std::string& configPath);
 
-   public:
+  public:
     Shell() = default;
     ~Shell() = default;
     Shell(const Shell&) = delete;

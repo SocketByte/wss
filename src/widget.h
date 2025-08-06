@@ -1,6 +1,9 @@
 #ifndef WIDGET_H
 #define WIDGET_H
 
+#include "modules/appd.h"
+
+#include <QTimer>
 #include <pch.h>
 
 #include <utility>
@@ -87,7 +90,22 @@ class Widget {
     std::unordered_map<uint8_t, WebView*> m_Views;
     WidgetInfo m_Info;
 
-   public:
+    /**
+     * Dispatches a callback to the main thread.
+     * @param callback The callback function to be executed on the main thread.
+     */
+    static void DispatchToMainThread(const std::function<void()>& callback) {
+        const auto timer = new QTimer();
+        timer->moveToThread(qApp->thread());
+        timer->setSingleShot(true);
+        QObject::connect(timer, &QTimer::timeout, [=]() {
+            callback();
+            timer->deleteLater();
+        });
+        QMetaObject::invokeMethod(timer, "start", Qt::QueuedConnection, Q_ARG(int, 0));
+    }
+
+  public:
     explicit Widget(WidgetInfo info) : m_Info(std::move(info)) { WSS_DEBUG("Creating widget: {}", m_Info.Name); }
 
     ~Widget() noexcept {
@@ -221,39 +239,52 @@ class Widget {
      */
     void SetVisible(const uint8_t monitorId, const bool visible) const {
         if (auto* window = GetWindow(monitorId); window) {
-            window->setVisible(visible);
+            WSS_DEBUG("Window was: {} on monitor ID: {}", window->isVisible() ? "visible" : "hidden", monitorId);
+            DispatchToMainThread([=]() {
+                window->setVisible(visible);
 
-            // If the window is hidden then there's no need for exclusivity.
-            // TODO: Determine if that's ever something a user would wish to omit.
-            if (m_Info.Exclusivity) {
-                SetExclusivity(monitorId, visible);
-                if (m_Info.ExclusivityZone) {
-                    SetExclusivity(monitorId, visible, m_Info.ExclusivityZone);
+                // If the window is hidden then there's no need for exclusivity.
+                // TODO: Determine if that's ever something a user would wish to omit.
+                if (m_Info.Exclusivity) {
+                    SetExclusivity(monitorId, visible);
+                    if (m_Info.ExclusivityZone) {
+                        SetExclusivity(monitorId, visible, m_Info.ExclusivityZone);
+                    }
                 }
-            }
+            });
             return;
         }
         WSS_WARN("Attempted to set visibility for an invalid or non-existent window on monitor ID: {}", monitorId);
     }
 
     /**
-     * Sets the visibility of all windows associated with this widget.
-     * @see SetVisible
-     * @param visible Whether all windows should be visible or not.
+     * Toggles the visibility of the window for the specified monitor ID.
+     * @param monitorId The ID of the monitor to toggle visibility for.
      */
-    void SetVisibleAll(const bool visible) const {
-        for (const auto& [monitorId, window] : m_Windows) {
-            window->setVisible(visible);
+    void ToggleVisible(const uint8_t monitorId) const {
+        if (auto* window = GetWindow(monitorId); window) {
+            DispatchToMainThread([=]() {
+                const bool isVisible = window->isVisible();
+                window->setVisible(!isVisible);
+                WSS_DEBUG("Toggled visibility for window on monitor ID: {} to {}", monitorId, !isVisible);
 
-            if (m_Info.Exclusivity) {
-                SetExclusivity(monitorId, visible);
-                if (m_Info.ExclusivityZone) {
-                    SetExclusivity(monitorId, visible, m_Info.ExclusivityZone);
+                if (m_Info.Exclusivity) {
+                    SetExclusivity(monitorId, !isVisible);
+                    if (m_Info.ExclusivityZone) {
+                        SetExclusivity(monitorId, !isVisible, m_Info.ExclusivityZone);
+                    }
                 }
-            }
+            });
+        } else {
+            WSS_WARN("Attempted to toggle visibility for an invalid or non-existent window on monitor ID: {}", monitorId);
         }
     }
 
+    /**
+     * Sets the keyboard interactivity for the window on the specified monitor ID.
+     * @param monitorId The ID of the monitor to set keyboard interactivity for.
+     * @param interactive Whether the window should be interactive with keyboard input or not.
+     */
     void SetKeyboardInteractivity(const uint8_t monitorId, const bool interactive) const {
         if (auto* window = GetWindow(monitorId); window) {
             auto* layer = LayerShellQt::Window::get(window->windowHandle());

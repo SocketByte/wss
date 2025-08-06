@@ -47,15 +47,14 @@ int WSS::Shell::Init(const std::string& appId, const std::string& configPath) {
     LoadConfig(configPath);
 
     // Yeah...
-    qputenv("QT_WEBENGINE_CHROMIUM_FLAGS",
-            "--use-gl=egl --enable-zero-copy --ozone-platform=wayland -ozone-platform-hint=auto "
-            "--ignore-gpu-blocklist "
-            "--enable-gpu-rasterization --disable-frame-rate-limit --no-sandbox"
-            "--disable-software-rasterizer --disable-software-vsync --use-vulkan "
-            "--enable-unsafe-webgpu --disable-sync-preferences --disable-gpu-vsync "
-            "--disable-features=UseSkiaRenderer,UseChromeOSDirectVideoDecoder"
-            "--enable-native-gpu-memory-buffers --enable-gpu-memory-buffer-video-frames"
-            "--enable-features=Vulkan,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization");
+    qputenv("QT_WEBENGINE_CHROMIUM_FLAGS", "--use-gl=egl --enable-zero-copy --ozone-platform=wayland -ozone-platform-hint=auto "
+                                           "--ignore-gpu-blocklist "
+                                           "--enable-gpu-rasterization --disable-frame-rate-limit --no-sandbox"
+                                           "--disable-software-rasterizer --disable-software-vsync --use-vulkan "
+                                           "--enable-unsafe-webgpu --disable-sync-preferences --disable-gpu-vsync "
+                                           "--disable-features=UseSkiaRenderer,UseChromeOSDirectVideoDecoder"
+                                           "--enable-native-gpu-memory-buffers --enable-gpu-memory-buffer-video-frames"
+                                           "--enable-features=Vulkan,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization");
     qputenv("QTWEBENGINE_DISABLE_SANDBOX", "1");
     qputenv("QT_QPA_PLATFORM", "wayland");
     qputenv("EGL_PLATFORM", "wayland");
@@ -251,18 +250,16 @@ void WSS::Shell::OnActivate(RenderApplication* app, ActivateCallbackPtr data) {
                               .DefaultHidden = hidden,
                               ._QT_padding = _QtPadding};
 
-        WSS_DEBUG(
-            "Creating widget with info: Name='{}', Route='{}', Layer='{}', "
-            "AnchorBitmask='{}', Exclusivity='{}', DefaultHidden='{}'",
-            widgetInfo.Name, widgetInfo.Route, static_cast<int>(widgetInfo.Layer), static_cast<int>(widgetInfo.AnchorBitmask),
-            widgetInfo.Exclusivity, widgetInfo.DefaultHidden);
+        WSS_DEBUG("Creating widget with info: Name='{}', Route='{}', Layer='{}', "
+                  "AnchorBitmask='{}', Exclusivity='{}', DefaultHidden='{}'",
+                  widgetInfo.Name, widgetInfo.Route, static_cast<int>(widgetInfo.Layer),
+                  static_cast<int>(widgetInfo.AnchorBitmask), widgetInfo.Exclusivity, widgetInfo.DefaultHidden);
 
         for (const auto& monitor : widgetInfo.Monitors) {
-            WSS_DEBUG(
-                "-- Monitor ID: {}, Width: {}, Height: {}, Margins: (Top: {}, Bottom: {}, Left: "
-                "{}, Right: {})",
-                monitor.MonitorId, monitor.Width, monitor.Height, monitor.MarginTop, monitor.MarginBottom, monitor.MarginLeft,
-                monitor.MarginRight);
+            WSS_DEBUG("-- Monitor ID: {}, Width: {}, Height: {}, Margins: (Top: {}, Bottom: {}, Left: "
+                      "{}, Right: {})",
+                      monitor.MonitorId, monitor.Width, monitor.Height, monitor.MarginTop, monitor.MarginBottom,
+                      monitor.MarginLeft, monitor.MarginRight);
             for (const auto& [regionName, regionInfo] : monitor.ClickRegionMap) {
                 WSS_DEBUG("   -- Click Region: {}, X: {}, Y: {}, Width: {}, Height: {}", regionName, regionInfo.X, regionInfo.Y,
                           regionInfo.Width, regionInfo.Height);
@@ -277,4 +274,53 @@ void WSS::Shell::OnActivate(RenderApplication* app, ActivateCallbackPtr data) {
     shell.m_IPC.Start();
     shell.m_Notifd.Start();
     shell.m_Appd.Start();
+
+    // inline void ZMQRep::Listen(std::function<json(const std::string&)> listener) {
+    shell.m_ZMQRep.Listen("widget-set-visible", [&shell](const json& msg) {
+        try {
+            std::string widgetName = msg["widgetName"];
+            bool visible = msg["visible"];
+            int monitorId = msg["monitorId"];
+
+            auto widget = shell.GetWidget(widgetName);
+            if (!widget) {
+                WSS_ERROR("Widget '{}' not found for visibility update.", widgetName);
+                return;
+            }
+
+            if (monitorId < 0 || monitorId >= 256) {
+                WSS_ERROR("Invalid monitor ID: {} for widget '{}'.", monitorId, widgetName);
+                return;
+            }
+            widget->SetVisible(static_cast<uint8_t>(monitorId), visible);
+        } catch (const json::parse_error& e) {
+            WSS_ERROR("Failed to parse JSON message: {}", e.what());
+        } catch (const std::exception& e) {
+            WSS_ERROR("Exception in ZMQRep listener: {}", e.what());
+        }
+    });
+
+    shell.m_ZMQRep.Listen("widget-toggle-visible", [&shell](const json& msg) {
+        try {
+            std::string widgetName = msg["widgetName"];
+            int monitorId = msg["monitorId"];
+
+            auto widget = shell.GetWidget(widgetName);
+            if (!widget) {
+                WSS_ERROR("Widget '{}' not found for visibility update.", widgetName);
+                return;
+            }
+
+            if (monitorId < 0 || monitorId >= 256) {
+                WSS_ERROR("Invalid monitor ID: {} for widget '{}'.", monitorId, widgetName);
+                return;
+            }
+            widget->ToggleVisible(static_cast<uint8_t>(monitorId));
+        } catch (const json::parse_error& e) {
+            WSS_ERROR("Failed to parse JSON message: {}", e.what());
+        } catch (const std::exception& e) {
+            WSS_ERROR("Exception in ZMQRep listener: {}", e.what());
+        }
+    });
+    shell.m_ZMQRep.RunAsync();
 }

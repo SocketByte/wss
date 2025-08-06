@@ -4,6 +4,7 @@
 #include <CLI/CLI11.hpp>
 #include <iostream>
 
+#include "dispatch/dispatcher.h"
 #include "shell.h"
 
 int LaunchApplication(const std::string& configPath) {
@@ -69,6 +70,9 @@ int main(int argc, char* argv[]) {
         }
         exit(LaunchApplication(customConfigPath));
     });
+
+    WSS::Dispatcher dispatcher;
+    dispatcher.InitCommands(app);
 
     CLI11_PARSE(app, argc, argv);
     spdlog::shutdown();
